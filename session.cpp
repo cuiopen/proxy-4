@@ -1,5 +1,5 @@
 //
-//            Copyright (c) Marco Amorim 2015.
+//            Copyright (c) Marco Amorim 2017.
 // Distributed under the Boost Software License, Version 1.0.
 //    (See accompanying file LICENSE_1_0.txt or copy at
 //          http://www.boost.org/LICENSE_1_0.txt)
@@ -17,7 +17,8 @@ session::session(
         const std::string& session_id,
         const std::string& host,
         const std::string& port,
-        size_t buffer_size) :
+        size_t buffer_size,
+        bool enable_hexdump) :
     logger_(boost::log::keywords::channel =
         std::string("net.session." + session_id)),
     io_service_(io_service),
@@ -25,7 +26,8 @@ session::session(
     server_(io_service),
     resolver_(io_service),
     to_(host, port),
-    buffer_size_(buffer_size)
+    buffer_size_(buffer_size),
+    hexdump_enabled_(enable_hexdump)
 {
     LOG_DEBUG() << "created";
 }
@@ -90,33 +92,44 @@ void session::handle_connect(
     {
         LOG_DEBUG() << "connected";
 
-        sp_buffer buffer = std::make_pair(
-                    boost::make_shared<uint8_t[]>(buffer_size_), buffer_size_);
+        try
+        {
+            sp_buffer buffer =
+                    std::make_pair(
+                        boost::make_shared<uint8_t[]>(buffer_size_),
+                        buffer_size_);
 
-        client_.async_read_some(
-                    boost::asio::buffer(
-                        buffer.first.get(), buffer.second),
-                    boost::bind(
-                        &session::handle_read, shared_from_this(),
-                        boost::asio::placeholders::error,
-                        boost::asio::placeholders::bytes_transferred,
-                        buffer,
-                        boost::ref(client_),
-                        boost::ref(server_)));
+            client_.async_read_some(
+                        boost::asio::buffer(
+                            buffer.first.get(), buffer.second),
+                        boost::bind(
+                            &session::handle_read, shared_from_this(),
+                            boost::asio::placeholders::error,
+                            boost::asio::placeholders::bytes_transferred,
+                            buffer,
+                            boost::ref(client_),
+                            boost::ref(server_)));
 
-        buffer = std::make_pair(
-                    boost::make_shared<uint8_t[]>(buffer_size_), buffer_size_);
+            buffer =
+                    std::make_pair(
+                        boost::make_shared<uint8_t[]>(buffer_size_),
+                        buffer_size_);
 
-        server_.async_read_some(
-                    boost::asio::buffer(
-                        buffer.first.get(), buffer.second),
-                    boost::bind(
-                        &session::handle_read, shared_from_this(),
-                        boost::asio::placeholders::error,
-                        boost::asio::placeholders::bytes_transferred,
-                        buffer,
-                        boost::ref(server_),
-                        boost::ref(client_)));
+            server_.async_read_some(
+                        boost::asio::buffer(
+                            buffer.first.get(), buffer.second),
+                        boost::bind(
+                            &session::handle_read, shared_from_this(),
+                            boost::asio::placeholders::error,
+                            boost::asio::placeholders::bytes_transferred,
+                            buffer,
+                            boost::ref(server_),
+                            boost::ref(client_)));
+        }
+        catch (std::exception& e)
+        {
+            LOG_ERROR() << "std::exception what=[" << e.what() << "]";
+        }
     }
     else
     {
@@ -176,50 +189,59 @@ void session::handle_read(
 {
     if (!ec && bytes_tranferred)
     {
-        to.async_send(
-                    boost::asio::buffer(
-                        buffer_read.first.get(),
-                        bytes_tranferred),
-                    boost::bind(
-                        &session::handle_send,
-                        shared_from_this(),
-                        boost::asio::placeholders::error,
-                        boost::asio::placeholders::bytes_transferred,
-                        buffer_read));
-
-        if (client_.local_endpoint() == to.local_endpoint())
+        try
         {
-            LOG_TRACE() << "forwarding " << bytes_tranferred << " bytes from"
-                        << " client=[" << from.local_endpoint().address()
-                        << ":" << from.local_endpoint().port() << "] to"
-                        << " server=[" << to.remote_endpoint().address()
-                        << ":" << to.remote_endpoint().port() << "]";
+            to.async_send(
+                        boost::asio::buffer(
+                            buffer_read.first.get(),
+                            bytes_tranferred),
+                        boost::bind(
+                            &session::handle_send,
+                            shared_from_this(),
+                            boost::asio::placeholders::error,
+                            boost::asio::placeholders::bytes_transferred,
+                            buffer_read));
+
+            if (client_.local_endpoint() == to.local_endpoint())
+            {
+                LOG_TRACE() << "client=[" << from.local_endpoint().address()
+                            << ":" << from.local_endpoint().port() << "] -> "
+                            << "server=[" << to.remote_endpoint().address()
+                            << ":" << to.remote_endpoint().port() << "] "
+                            << "bytes=[" << bytes_tranferred << "]";
+            }
+            else
+            {
+                LOG_TRACE() << "server=[" << from.local_endpoint().address()
+                            << ":" << from.local_endpoint().port() << "] -> "
+                            << "client=[" << to.remote_endpoint().address()
+                            << ":" << to.remote_endpoint().port() << "] "
+                            << "bytes=[" << bytes_tranferred << "]";
+            }
+
+            if (hexdump_enabled_)
+                hexdump(bytes_tranferred, buffer_read);
+
+            sp_buffer buffer =
+                    std::make_pair(
+                        boost::make_shared<uint8_t[]>(buffer_size_),
+                        buffer_size_);
+
+            from.async_read_some(
+                        boost::asio::buffer(
+                            buffer.first.get(), buffer.second),
+                        boost::bind(
+                            &session::handle_read, shared_from_this(),
+                            boost::asio::placeholders::error,
+                            boost::asio::placeholders::bytes_transferred,
+                            buffer,
+                            boost::ref(from),
+                            boost::ref(to)));
         }
-        else
+        catch (std::exception& e)
         {
-            LOG_TRACE() << "forwarding " << bytes_tranferred << " bytes from"
-                        << " server=[" << to.local_endpoint().address()
-                        << ":" << to.local_endpoint().port() << "] to"
-                        << " client=[" << from.remote_endpoint().address()
-                        << ":" << from.remote_endpoint().port() << "]";
+            LOG_ERROR() << "std::exception what=[" << e.what() << "]";
         }
-
-        hexdump(bytes_tranferred, buffer_read);
-
-        sp_buffer buffer = std::make_pair(
-                    boost::make_shared<uint8_t[]>(buffer_size_), buffer_size_);
-
-        from.async_read_some(
-                    boost::asio::buffer(
-                        buffer.first.get(), buffer.second),
-                    boost::bind(
-                        &session::handle_read, shared_from_this(),
-                        boost::asio::placeholders::error,
-                        boost::asio::placeholders::bytes_transferred,
-                        buffer,
-                        boost::ref(from),
-                        boost::ref(to)));
-
     }
     else
     {
@@ -244,13 +266,8 @@ void session::handle_send(
 {
     LOG_TRACE() << "bytes sent: " << bytes_tranferred;
 
-    if (!ec)
-    {
-
-    }
-    else
+    if (ec)
     {
         LOG_ERROR() << "ec=[" << ec << "] message=[" << ec.message() << "]";
     }
 }
-

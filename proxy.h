@@ -1,5 +1,5 @@
 //
-//            Copyright (c) Marco Amorim 2015.
+//            Copyright (c) Marco Amorim 2017.
 // Distributed under the Boost Software License, Version 1.0.
 //    (See accompanying file LICENSE_1_0.txt or copy at
 //          http://www.boost.org/LICENSE_1_0.txt)
@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <boost/asio.hpp>
+#include <boost/thread/thread_pool.hpp>
 #include <boost/bind.hpp>
 #include <boost/enable_shared_from_this.hpp>
 #include <boost/smart_ptr.hpp>
@@ -30,12 +31,13 @@ public:
     typedef boost::shared_ptr<boost::asio::ip::tcp::socket> socket_ptr;
 
     proxy(
-            boost::asio::io_service& io_service,
             const std::string& shost,
             const std::string& sport,
             const std::string& dhost,
             const std::string& dport,
-            size_t buffer_size = 4096);
+            size_t buffer_size,
+            size_t thread_pool_size,
+            bool enable_hexdump);
 
     virtual ~proxy();
 
@@ -57,7 +59,9 @@ protected:
 
     logger_type logger_;
 
-    boost::asio::io_service& io_service_;
+    boost::asio::io_service io_service_;
+
+    boost::thread_group thread_group_;
 
     boost::asio::ip::tcp::socket client_;
 
@@ -80,5 +84,9 @@ protected:
     boost::random::uniform_int_distribution<uint32_t> uniform_dist_;
 
     size_t buffer_size_;
+
+    size_t thread_pool_size_;
+
+    bool hexdump_enabled_;
 
 };

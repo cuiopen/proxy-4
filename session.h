@@ -1,5 +1,5 @@
 //
-//            Copyright (c) Marco Amorim 2015.
+//            Copyright (c) Marco Amorim 2017.
 // Distributed under the Boost Software License, Version 1.0.
 //    (See accompanying file LICENSE_1_0.txt or copy at
 //          http://www.boost.org/LICENSE_1_0.txt)
@@ -27,7 +27,8 @@ public:
             const std::string& session_id,
             const std::string& host,
             const std::string& port,
-            size_t buffer_size = 4096);
+            size_t buffer_size,
+            bool enable_hexdump);
 
     virtual ~session();
 
@@ -73,5 +74,7 @@ protected:
     boost::asio::ip::tcp::resolver::query to_;
 
     size_t buffer_size_;
+
+    bool hexdump_enabled_;
 
 };

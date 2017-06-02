@@ -1,5 +1,5 @@
 //
-//            Copyright (c) Marco Amorim 2015.
+//            Copyright (c) Marco Amorim 2017.
 // Distributed under the Boost Software License, Version 1.0.
 //    (See accompanying file LICENSE_1_0.txt or copy at
 //          http://www.boost.org/LICENSE_1_0.txt)
@@ -12,6 +12,8 @@
 
 #include <boost/date_time/posix_time/posix_time_types.hpp>
 #include <boost/log/expressions.hpp>
+#include <boost/log/expressions/formatters.hpp>
+#include <boost/log/attributes.hpp>
 #include <boost/log/support/date_time.hpp>
 #include <boost/log/utility/setup/common_attributes.hpp>
 #include <boost/log/utility/setup/console.hpp>
@@ -26,15 +28,18 @@ namespace keywords = boost::log::keywords;
 namespace expr = boost::log::expressions;
 
 BOOST_LOG_ATTRIBUTE_KEYWORD(timestamp, "TimeStamp", boost::posix_time::ptime)
-BOOST_LOG_ATTRIBUTE_KEYWORD(severity, "Severity", logging::trivial::severity_level)
+BOOST_LOG_ATTRIBUTE_KEYWORD(severity, "Severity", trivial::severity_level)
 BOOST_LOG_ATTRIBUTE_KEYWORD(channel, "Channel", std::string)
+BOOST_LOG_ATTRIBUTE_KEYWORD(thread_id, "ThreadID", boost::log::attributes::current_thread_id::value_type)
 
 void init_log_system(
         const std::string& settings_file,
         const std::string& severity_level)
 {
-    logging::register_simple_formatter_factory< trivial::severity_level, char >("Severity");
-    logging::register_simple_filter_factory< trivial::severity_level, char >("Severity");
+	logging::register_simple_formatter_factory<
+			trivial::severity_level, char>("Severity");
+	logging::register_simple_filter_factory<
+			trivial::severity_level, char>("Severity");
     logging::add_common_attributes();
 
     if (!settings_file.empty())
@@ -65,7 +70,8 @@ void init_log_system(
             (
                 expr::stream
                     << expr::format_date_time(timestamp, "%Y-%m-%d %H:%M:%S.%f")
-                    << ": <" << severity
+                    << ": {" << thread_id << "} "
+                    << "<" << severity
                     << "> [" << channel << "] "
                     << expr::smessage
             )
