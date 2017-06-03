@@ -13,6 +13,7 @@
 #include <boost/thread.hpp>
 
 #include "proxy.h"
+#include "log.h"
 
 int main(int argc, char* argv[])
 {
@@ -27,6 +28,12 @@ int main(int argc, char* argv[])
                  "this help message")
                 ("disable-hexdump,d",
                  "disable hexdump of trace messages")
+                ("client-delay",
+                 po::value<size_t>()->default_value(0),
+                 "client delay (0 - disabled)")
+                ("server-delay",
+                 po::value<size_t>()->default_value(0),
+                 "server delay (0 - disabled)")
                 ("buffer-size,b",
                  po::value<size_t>()->default_value(4096),
                  "buffer size")
@@ -61,18 +68,20 @@ int main(int argc, char* argv[])
             return EXIT_SUCCESS;
         }
 
-        init_log_system(
+        core::logging::init(
                     vm["log-settings"].as<std::string>(),
                     vm["log-level"].as<std::string>());
 
-        proxy service(
+        net::proxy service(
                     vm["shost"].as<std::string>(),
                     vm["sport"].as<std::string>(),
                     vm["dhost"].as<std::string>(),
                     vm["dport"].as<std::string>(),
                     vm["buffer-size"].as<size_t>(),
                     vm["thread-pool-size"].as<size_t>(),
-                    !vm.count("disable-hexdump"));
+                    !vm.count("disable-hexdump"),
+                    vm["client-delay"].as<size_t>(),
+                    vm["server-delay"].as<size_t>());
 
         service.start();
     }

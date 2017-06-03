@@ -24,5 +24,17 @@ void init_log_system(
         const std::string& settings_file,
         const std::string& severity_level);
 
+namespace core {
+
+class logging
+{
+public:
+    static void init(
+            const std::string& settings_file,
+            const std::string& severity_level);
+};
+
 typedef boost::log::sources::severity_channel_logger_mt<
-	boost::log::trivial::severity_level, std::string> logger_type;
+    boost::log::trivial::severity_level, std::string> logger_type;
+
+} // namespace core

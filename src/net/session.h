@@ -6,17 +6,28 @@
 //
 #pragma once
 
+#include <cstdint>
+
+#include <boost/thread/mutex.hpp>
 #include <boost/asio.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/enable_shared_from_this.hpp>
 
 #include "log.h"
 
+namespace net {
+
 class session :
         public boost::enable_shared_from_this<session>
 {
 
 public:
+
+    typedef enum status_ {
+        ready,
+        running,
+        stopped
+    } status;
 
     typedef boost::shared_ptr<session> ptr;
 
@@ -28,7 +39,9 @@ public:
             const std::string& host,
             const std::string& port,
             size_t buffer_size,
-            bool enable_hexdump);
+            bool enable_hexdump,
+            size_t client_delay,
+            size_t server_delay);
 
     virtual ~session();
 
@@ -50,7 +63,8 @@ protected:
             size_t bytes_tranferred,
             sp_buffer buffer,
             boost::asio::ip::tcp::socket& from,
-            boost::asio::ip::tcp::socket& to);
+            boost::asio::ip::tcp::socket& to,
+            bool server_flag);
 
     void handle_send(
             const boost::system::error_code& ec,
@@ -61,7 +75,9 @@ protected:
             size_t bytes_tranferred,
             sp_buffer buffer);
 
-    logger_type logger_;
+    void stop();
+
+    core::logger_type logger_;
 
     boost::asio::io_service& io_service_;
 
@@ -77,4 +93,18 @@ protected:
 
     bool hexdump_enabled_;
 
+    uint64_t total_tx_;
+
+    uint64_t total_rx_;
+
+    size_t client_delay_;
+
+    size_t server_delay_;
+
+    status status_;
+
+    boost::mutex mutex_;
+
 };
+
+} // namespace net

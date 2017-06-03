@@ -4,13 +4,16 @@
 //    (See accompanying file LICENSE_1_0.txt or copy at
 //          http://www.boost.org/LICENSE_1_0.txt)
 //
-#include "session.h"
-
 #include <iomanip>
 #include <sstream>
 
 #include <boost/make_shared.hpp>
 #include <boost/bind.hpp>
+#include <boost/thread/lock_guard.hpp>
+#include <boost/thread/thread.hpp>
+
+#include "session.h"
+using namespace net;
 
 session::session(
         boost::asio::io_service& io_service,
@@ -18,7 +21,9 @@ session::session(
         const std::string& host,
         const std::string& port,
         size_t buffer_size,
-        bool enable_hexdump) :
+        bool enable_hexdump,
+        size_t client_delay,
+        size_t server_delay) :
     logger_(boost::log::keywords::channel =
         std::string("net.session." + session_id)),
     io_service_(io_service),
@@ -27,14 +32,19 @@ session::session(
     resolver_(io_service),
     to_(host, port),
     buffer_size_(buffer_size),
-    hexdump_enabled_(enable_hexdump)
+    hexdump_enabled_(enable_hexdump),
+    total_tx_(0),
+    total_rx_(0),
+    client_delay_(client_delay),
+    server_delay_(server_delay),
+    status_(ready)
 {
-    LOG_DEBUG() << "created";
+    LOG_INFO() << "created";
 }
 
 session::~session()
 {
-    LOG_DEBUG() << "destroyed";
+    LOG_INFO() << "destroyed";
 }
 
 boost::asio::ip::tcp::socket& session::get_socket()
@@ -54,6 +64,8 @@ void session::start()
                     boost::asio::placeholders::error,
                     boost::asio::placeholders::iterator)
                 );
+
+    status_ = running;
 }
 
 void session::handle_resolve(
@@ -108,7 +120,8 @@ void session::handle_connect(
                             boost::asio::placeholders::bytes_transferred,
                             buffer,
                             boost::ref(client_),
-                            boost::ref(server_)));
+                            boost::ref(server_),
+                            true));
 
             buffer =
                     std::make_pair(
@@ -124,7 +137,8 @@ void session::handle_connect(
                             boost::asio::placeholders::bytes_transferred,
                             buffer,
                             boost::ref(server_),
-                            boost::ref(client_)));
+                            boost::ref(client_),
+                            false));
         }
         catch (std::exception& e)
         {
@@ -180,12 +194,28 @@ void session::hexdump(
     }
 }
 
+void session::stop()
+{
+    boost::lock_guard<boost::mutex> lock(mutex_);
+
+    if (status_ != stopped)
+    {
+        server_.close();
+        client_.close();
+        status_ = stopped;
+
+        LOG_INFO() << "stopped tx=["
+                   << total_tx_ << "] rx=[" << total_rx_ << "]";
+    }
+}
+
 void session::handle_read(
         const boost::system::error_code& ec,
         size_t bytes_tranferred,
         sp_buffer buffer_read,
         boost::asio::ip::tcp::socket& from,
-        boost::asio::ip::tcp::socket& to)
+        boost::asio::ip::tcp::socket& to,
+        bool server_flag)
 {
     if (!ec && bytes_tranferred)
     {
@@ -202,25 +232,43 @@ void session::handle_read(
                             boost::asio::placeholders::bytes_transferred,
                             buffer_read));
 
-            if (client_.local_endpoint() == to.local_endpoint())
+            if (server_flag)
             {
-                LOG_TRACE() << "client=[" << from.local_endpoint().address()
-                            << ":" << from.local_endpoint().port() << "] -> "
-                            << "server=[" << to.remote_endpoint().address()
-                            << ":" << to.remote_endpoint().port() << "] "
-                            << "bytes=[" << bytes_tranferred << "]";
-            }
-            else
-            {
+                boost::lock_guard<boost::mutex> lock(mutex_);
+
+                total_rx_ += bytes_tranferred;
+
                 LOG_TRACE() << "server=[" << from.local_endpoint().address()
                             << ":" << from.local_endpoint().port() << "] -> "
                             << "client=[" << to.remote_endpoint().address()
                             << ":" << to.remote_endpoint().port() << "] "
                             << "bytes=[" << bytes_tranferred << "]";
+
+                if (server_delay_)
+                    boost::this_thread::sleep_for(
+                                boost::chrono::microseconds(server_delay_));
+            }
+            else
+            {
+                boost::lock_guard<boost::mutex> lock(mutex_);
+
+                total_tx_ += bytes_tranferred;
+
+                LOG_TRACE() << "client=[" << from.local_endpoint().address()
+                            << ":" << from.local_endpoint().port() << "] -> "
+                            << "server=[" << to.remote_endpoint().address()
+                            << ":" << to.remote_endpoint().port() << "] "
+                            << "bytes=[" << bytes_tranferred << "]";
+
+                if (client_delay_)
+                    boost::this_thread::sleep_for(
+                                boost::chrono::microseconds(client_delay_));
             }
 
             if (hexdump_enabled_)
+            {
                 hexdump(bytes_tranferred, buffer_read);
+            }
 
             sp_buffer buffer =
                     std::make_pair(
@@ -236,7 +284,8 @@ void session::handle_read(
                             boost::asio::placeholders::bytes_transferred,
                             buffer,
                             boost::ref(from),
-                            boost::ref(to)));
+                            boost::ref(to),
+                            server_flag));
         }
         catch (std::exception& e)
         {
@@ -251,11 +300,12 @@ void session::handle_read(
         }
         else
         {
-            LOG_DEBUG() << "connection closed";
+            LOG_DEBUG() << "connection closed - "
+                       << (server_flag ? "server" : "client");
         }
 
-        server_.close();
-    }
+        stop();
+   }
 
 }
 

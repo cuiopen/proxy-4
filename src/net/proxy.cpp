@@ -8,10 +8,11 @@
 #include <iomanip>
 
 #include <boost/make_shared.hpp>
+#include <boost/asio.hpp>
+using namespace boost::asio;
 
 #include "proxy.h"
-
-using namespace boost::asio;
+using namespace net;
 
 proxy::proxy(
         const std::string& shost,
@@ -20,7 +21,9 @@ proxy::proxy(
         const std::string& dport,
         size_t buffer_size,
         size_t thread_pool_size,
-        bool enable_hexdump) :
+        bool enable_hexdump,
+        size_t client_delay,
+        size_t server_delay) :
     logger_(boost::log::keywords::channel = "net.proxy"),
     client_(io_service_),
     server_(io_service_),
@@ -32,7 +35,9 @@ proxy::proxy(
     buffer_size_(buffer_size),
     signal_set_(io_service_),
     thread_pool_size_(thread_pool_size),
-    hexdump_enabled_(enable_hexdump)
+    hexdump_enabled_(enable_hexdump),
+    client_delay_(client_delay),
+    server_delay_(server_delay)
 {
     signal_set_.add(SIGINT);
     signal_set_.async_wait(
@@ -59,7 +64,10 @@ void proxy::start()
 
     LOG_INFO() << "threads=[" << thread_pool_size_ << "] "
                << "hexdump=[" << hexdump_enabled_ << "] "
-               << "buffer_size=[" << buffer_size_ << "]";
+               << "buffer_size=[" << buffer_size_ << "] ";
+
+    LOG_INFO() << "client_delay=[" << client_delay_ << "] "
+               << "server_delay=[" << server_delay_ << "]";
 
     resolver_.async_resolve(
                 from_,
@@ -139,7 +147,9 @@ void proxy::handle_accept(
                     to_.host_name(),
                     to_.service_name(),
                     buffer_size_,
-                    hexdump_enabled_);
+                    hexdump_enabled_,
+                    client_delay_,
+                    server_delay_);
 
         acceptor_.async_accept(
                     ptr->get_socket(),

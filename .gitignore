@@ -1,0 +1,6 @@
+# QtCreator
+*.user
+*.user.*
+
+# Backup files
+*.bak

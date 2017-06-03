@@ -7,7 +7,15 @@
 project(proxy)
 cmake_minimum_required(VERSION 2.8)
 
-aux_source_directory(. SRC_LIST)
+aux_source_directory(
+    src/modules SRC_LIST)
+
+aux_source_directory(
+    src/core SRC_LIST)
+
+aux_source_directory(
+    src/net SRC_LIST)
+
 add_executable(
     ${PROJECT_NAME}
     ${SRC_LIST}
@@ -32,7 +40,9 @@ if(NOT Boost_USE_STATIC_LIBS)
 endif()
 
 include_directories(
-    ${Boost_INCLUDE_DIRS})
+    ${Boost_INCLUDE_DIRS}
+    src/core
+    src/net)
 
 target_link_libraries(
     ${PROJECT_NAME}

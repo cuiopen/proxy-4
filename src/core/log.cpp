@@ -4,8 +4,6 @@
 //    (See accompanying file LICENSE_1_0.txt or copy at
 //          http://www.boost.org/LICENSE_1_0.txt)
 //
-#include "log.h"
-
 #include <map>
 #include <fstream>
 #include <sstream>
@@ -19,28 +17,32 @@
 #include <boost/log/utility/setup/console.hpp>
 #include <boost/log/utility/setup/file.hpp>
 #include <boost/log/utility/setup/from_stream.hpp>
-
-namespace logging = boost::log;
+#include <boost/log/sources/severity_channel_logger.hpp>
+#include <boost/log/trivial.hpp>
 namespace attrs = boost::log::attributes;
 namespace src = boost::log::sources;
 namespace trivial = boost::log::trivial;
 namespace keywords = boost::log::keywords;
 namespace expr = boost::log::expressions;
 
+#include "log.h"
+using namespace core;
+
 BOOST_LOG_ATTRIBUTE_KEYWORD(timestamp, "TimeStamp", boost::posix_time::ptime)
 BOOST_LOG_ATTRIBUTE_KEYWORD(severity, "Severity", trivial::severity_level)
 BOOST_LOG_ATTRIBUTE_KEYWORD(channel, "Channel", std::string)
-BOOST_LOG_ATTRIBUTE_KEYWORD(thread_id, "ThreadID", boost::log::attributes::current_thread_id::value_type)
+BOOST_LOG_ATTRIBUTE_KEYWORD(thread_id, "ThreadID",
+                            attrs::current_thread_id::value_type)
 
-void init_log_system(
+void logging::init(
         const std::string& settings_file,
         const std::string& severity_level)
 {
-	logging::register_simple_formatter_factory<
+	boost::log::register_simple_formatter_factory<
 			trivial::severity_level, char>("Severity");
-	logging::register_simple_filter_factory<
+	boost::log::register_simple_filter_factory<
 			trivial::severity_level, char>("Severity");
-    logging::add_common_attributes();
+	boost::log::add_common_attributes();
 
     if (!settings_file.empty())
     {
@@ -52,7 +54,7 @@ void init_log_system(
             throw std::invalid_argument(errm.str());
         }
 
-        logging::init_from_stream(settings);
+        boost::log::init_from_stream(settings);
     }
     else
     {
@@ -64,7 +66,7 @@ void init_log_system(
         severity_map["error"] = trivial::error;
         severity_map["fatal"] = trivial::fatal;
 
-        logging::add_console_log(
+        boost::log::add_console_log(
             std::clog,
             keywords::format =
             (
@@ -77,7 +79,7 @@ void init_log_system(
             )
         );
 
-        logging::core::get()->set_filter
+        boost::log::core::get()->set_filter
         (
             trivial::severity >= severity_map[severity_level]
         );

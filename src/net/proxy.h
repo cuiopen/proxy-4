@@ -20,6 +20,8 @@
 #include "session.h"
 #include "log.h"
 
+namespace net {
+
 class proxy :
         public boost::enable_shared_from_this<proxy>
 {
@@ -37,7 +39,9 @@ public:
             const std::string& dport,
             size_t buffer_size,
             size_t thread_pool_size,
-            bool enable_hexdump);
+            bool enable_hexdump,
+            size_t client_delay,
+            size_t server_delay);
 
     virtual ~proxy();
 
@@ -57,7 +61,7 @@ protected:
             const boost::system::error_code& error,
             int signal_number);
 
-    logger_type logger_;
+    core::logger_type logger_;
 
     boost::asio::io_service io_service_;
 
@@ -87,6 +91,12 @@ protected:
 
     size_t thread_pool_size_;
 
+    size_t client_delay_;
+
+    size_t server_delay_;
+
     bool hexdump_enabled_;
 
 };
+
+} // namespace net
