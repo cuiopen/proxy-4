@@ -32,20 +32,29 @@ public:
 
     typedef boost::shared_ptr<boost::asio::ip::tcp::socket> socket_ptr;
 
+    typedef struct config_
+    {
+        std::string name_;
+        std::string shost_;
+        std::string sport_;
+        std::string dhost_;
+        std::string dport_;
+        size_t buffer_size_;
+        size_t thread_pool_size_;
+        bool hexdump_enabled_;
+        size_t client_delay_;
+        size_t server_delay_;
+    } config;
+
     proxy(
-            const std::string& shost,
-            const std::string& sport,
-            const std::string& dhost,
-            const std::string& dport,
-            size_t buffer_size,
-            size_t thread_pool_size,
-            bool enable_hexdump,
-            size_t client_delay,
-            size_t server_delay);
+            boost::asio::io_service& io_service,
+            const config& proxy_config);
 
     virtual ~proxy();
 
     void start();
+
+    void stop();
 
 protected:
 
@@ -63,9 +72,7 @@ protected:
 
     core::logger_type logger_;
 
-    boost::asio::io_service io_service_;
-
-    boost::thread_group thread_group_;
+    boost::asio::io_service& io_service_;
 
     boost::asio::ip::tcp::socket client_;
 
@@ -79,24 +86,13 @@ protected:
 
     boost::asio::ip::tcp::resolver::query to_;
 
-    boost::asio::signal_set signal_set_;
-
     std::vector<session::ptr> sessions_;
 
     boost::random::random_device random_device_;
 
     boost::random::uniform_int_distribution<uint32_t> uniform_dist_;
 
-    size_t buffer_size_;
-
-    size_t thread_pool_size_;
-
-    size_t client_delay_;
-
-    size_t server_delay_;
-
-    bool hexdump_enabled_;
-
+    config config_;
 };
 
 } // namespace net

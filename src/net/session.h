@@ -34,6 +34,7 @@ public:
     typedef std::pair<boost::shared_ptr<uint8_t[]>, size_t> sp_buffer;
 
     session(
+            const std::string& name,
             boost::asio::io_service& io_service,
             const std::string& session_id,
             const std::string& host,
@@ -48,6 +49,10 @@ public:
     boost::asio::ip::tcp::socket& get_socket();
 
     void start();
+
+    void stop();
+
+    const std::string& get_id();
 
 protected:
 
@@ -75,8 +80,6 @@ protected:
             size_t bytes_tranferred,
             sp_buffer buffer);
 
-    void stop();
-
     core::logger_type logger_;
 
     boost::asio::io_service& io_service_;
@@ -88,6 +91,8 @@ protected:
     boost::asio::ip::tcp::resolver resolver_;
 
     boost::asio::ip::tcp::resolver::query to_;
+
+    std::string id_;
 
     size_t buffer_size_;
 

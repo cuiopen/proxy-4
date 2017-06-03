@@ -16,6 +16,7 @@
 using namespace net;
 
 session::session(
+        const std::string& name,
         boost::asio::io_service& io_service,
         const std::string& session_id,
         const std::string& host,
@@ -25,12 +26,13 @@ session::session(
         size_t client_delay,
         size_t server_delay) :
     logger_(boost::log::keywords::channel =
-        std::string("net.session." + session_id)),
+        std::string("net.session." + name + "." + session_id)),
     io_service_(io_service),
     client_(io_service),
     server_(io_service),
     resolver_(io_service),
     to_(host, port),
+    id_(session_id),
     buffer_size_(buffer_size),
     hexdump_enabled_(enable_hexdump),
     total_tx_(0),
@@ -39,12 +41,12 @@ session::session(
     server_delay_(server_delay),
     status_(ready)
 {
-    LOG_INFO() << "created";
+    LOG_INFO() << "ctor";
 }
 
 session::~session()
 {
-    LOG_INFO() << "destroyed";
+    LOG_INFO() << "dtor";
 }
 
 boost::asio::ip::tcp::socket& session::get_socket()
@@ -66,6 +68,11 @@ void session::start()
                 );
 
     status_ = running;
+}
+
+const std::string& session::get_id()
+{
+    return id_;
 }
 
 void session::handle_resolve(
@@ -207,6 +214,8 @@ void session::stop()
         LOG_INFO() << "stopped tx=["
                    << total_tx_ << "] rx=[" << total_rx_ << "]";
     }
+
+    LOG_DEBUG() << "session stopped";
 }
 
 void session::handle_read(

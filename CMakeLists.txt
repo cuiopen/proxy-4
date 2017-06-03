@@ -19,7 +19,9 @@ aux_source_directory(
 add_executable(
     ${PROJECT_NAME}
     ${SRC_LIST}
-    LICENSE_1_0.txt)
+    LICENSE_1_0.txt
+    config/settings.xml
+    config/log_settings.txt)
 
 #set(Boost_DEBUG                 ON)
 #set(Boost_USE_MULTITHREADED    OFF)

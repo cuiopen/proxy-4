@@ -9,49 +9,32 @@
 
 #include <boost/make_shared.hpp>
 #include <boost/asio.hpp>
+#include <boost/foreach.hpp>
 using namespace boost::asio;
 
 #include "proxy.h"
 using namespace net;
 
 proxy::proxy(
-        const std::string& shost,
-        const std::string& sport,
-        const std::string& dhost,
-        const std::string& dport,
-        size_t buffer_size,
-        size_t thread_pool_size,
-        bool enable_hexdump,
-        size_t client_delay,
-        size_t server_delay) :
-    logger_(boost::log::keywords::channel = "net.proxy"),
-    client_(io_service_),
-    server_(io_service_),
-    acceptor_(io_service_),
-    resolver_(io_service_),
-    from_(shost, sport),
-    to_(dhost, dport),
-    uniform_dist_(0, INT32_MAX),
-    buffer_size_(buffer_size),
-    signal_set_(io_service_),
-    thread_pool_size_(thread_pool_size),
-    hexdump_enabled_(enable_hexdump),
-    client_delay_(client_delay),
-    server_delay_(server_delay)
+        boost::asio::io_service& io_service,
+        const proxy::config& config) :
+       logger_(boost::log::keywords::channel = "net.proxy." + config.name_),
+       io_service_(io_service),
+       client_(io_service_),
+       server_(io_service_),
+       acceptor_(io_service_),
+       resolver_(io_service_),
+       from_(config.shost_, config.sport_),
+       to_(config.dhost_, config.dport_),
+       uniform_dist_(0, INT32_MAX),
+       config_(config)
 {
-    signal_set_.add(SIGINT);
-    signal_set_.async_wait(
-                boost::bind(
-                    &proxy::handle_signal,
-                    this,
-                    boost::asio::placeholders::error,
-                    boost::asio::placeholders::signal_number));
+    LOG_INFO() << "ctor";
 }
 
 proxy::~proxy()
 {
-    thread_group_.join_all();
-    LOG_INFO() << "proxy destroyed";
+    LOG_INFO() << "dtor";
 }
 
 void proxy::start()
@@ -62,12 +45,12 @@ void proxy::start()
                << "dst=[" << to_.host_name()
                << ":" << to_.service_name() << "]";
 
-    LOG_INFO() << "threads=[" << thread_pool_size_ << "] "
-               << "hexdump=[" << hexdump_enabled_ << "] "
-               << "buffer_size=[" << buffer_size_ << "] ";
+    LOG_INFO() << "threads=[" << config_.thread_pool_size_ << "] "
+               << "hexdump=[" << config_.hexdump_enabled_ << "] "
+               << "buffer_size=[" << config_.buffer_size_ << "] ";
 
-    LOG_INFO() << "client_delay=[" << client_delay_ << "] "
-               << "server_delay=[" << server_delay_ << "]";
+    LOG_INFO() << "client_delay=[" << config_.client_delay_ << "] "
+               << "server_delay=[" << config_.server_delay_ << "]";
 
     resolver_.async_resolve(
                 from_,
@@ -77,15 +60,18 @@ void proxy::start()
                     placeholders::error,
                     placeholders::iterator)
                 );
+}
 
-    for (size_t i = 0; i < thread_pool_size_ - 1; ++i)
+void proxy::stop()
+{
+    BOOST_FOREACH(std::vector<session::ptr>::value_type& v, sessions_)
     {
-        thread_group_.create_thread(
-                    boost::bind(&boost::asio::io_service::run,
-                                &io_service_));
+        v->stop();
     }
 
-    io_service_.run();
+    sessions_.clear();
+
+    LOG_INFO() << "proxy stopped";
 }
 
 void proxy::handle_resolve(
@@ -130,7 +116,8 @@ void proxy::handle_accept(
 
         if (session_ptr)
         {
-            LOG_INFO() << "connection accepted";
+            LOG_INFO() << "connection accepted starting session=["
+                       << session_ptr->get_id() << "]";
 
             session_ptr->start();
 
@@ -142,14 +129,15 @@ void proxy::handle_accept(
 
         session::ptr ptr =
                 boost::make_shared<session>(
+                    config_.name_,
                     boost::ref(io_service_),
                     session_id.str(),
                     to_.host_name(),
                     to_.service_name(),
-                    buffer_size_,
-                    hexdump_enabled_,
-                    client_delay_,
-                    server_delay_);
+                    config_.buffer_size_,
+                    config_.hexdump_enabled_,
+                    config_.client_delay_,
+                    config_.server_delay_);
 
         acceptor_.async_accept(
                     ptr->get_socket(),
@@ -159,34 +147,6 @@ void proxy::handle_accept(
                         placeholders::error,
                         ptr));
 
-    }
-    else
-    {
-        LOG_ERROR() << "ec=[" << ec << "] message=[" << ec.message() << "]";
-    }
-}
-
-void proxy::handle_signal(
-        const boost::system::error_code& ec,
-        int signal_number)
-{
-    if (!ec)
-    {
-        LOG_INFO() << "signal=[" << signal_number << "] received";
-        if (signal_number == SIGINT)
-        {
-            LOG_INFO() << "stopping now";
-            io_service_.stop();
-        }
-        else
-        {
-            signal_set_.async_wait(
-                        boost::bind(
-                            &proxy::handle_signal,
-                            this,
-                            boost::asio::placeholders::error,
-                            boost::asio::placeholders::signal_number));
-        }
     }
     else
     {

@@ -9,58 +9,108 @@
 #include <sstream>
 #include <cstdlib>
 
-#include <boost/program_options.hpp>
 #include <boost/thread.hpp>
+#include <boost/program_options.hpp>
 
 #include "proxy.h"
+#include "proxy_manager.h"
 #include "log.h"
+
+void add_options(
+        boost::program_options::options_description& desc)
+{
+    namespace po = boost::program_options;
+
+    desc.add_options()
+            ("help,h",
+             "this help message");
+
+    desc.add_options()
+            ("version,v",
+             "show version info");
+
+    desc.add_options()
+            ("settings-file,s",
+             po::value<std::string>(),
+             "settings file");
+
+    desc.add_options()
+            ("disable-hexdump,d",
+             "disable hexdump of trace messages");
+
+    desc.add_options()
+            ("client-delay",
+             po::value<size_t>()->default_value(0),
+             "client delay (0 - disabled)");
+
+    desc.add_options()
+            ("server-delay",
+             po::value<size_t>()->default_value(0),
+             "server delay (0 - disabled)");
+
+    desc.add_options()
+            ("buffer-size,b",
+             po::value<size_t>()->default_value(8192),
+             "buffer size");
+
+    desc.add_options()
+            ("thread-pool-size,n",
+             po::value<size_t>()->default_value(
+                 boost::thread::hardware_concurrency()),
+             "thread pool size");
+
+    desc.add_options()
+            ("log-settings",
+             po::value<std::string>()->default_value(""),
+             "log settings file name");
+
+    desc.add_options()
+            ("log-level,l",
+             po::value<std::string>()->default_value("info"),
+             "log level (trace|debug|info|warning|error|fatal");
+
+    desc.add_options()
+            ("shost",
+             po::value<std::string>()->default_value("localhost"),
+             "source hostname");
+
+    desc.add_options()
+            ("sport",
+             po::value<std::string>()->default_value("http-alt"),
+             "source service name or port");
+
+    desc.add_options()
+            ("dhost",
+             po::value<std::string>()->default_value("localhost"),
+             "destination hostname");
+
+     desc.add_options()
+            ("dport",
+             po::value<std::string>()->default_value("http"),
+             "destination service name or port");
+}
+
+void load_settings(
+        const std::string& file)
+{
+
+}
 
 int main(int argc, char* argv[])
 {
     try
     {
-        namespace po = boost::program_options;
-        po::variables_map vm;
-        po::options_description desc("allowed options");
+        boost::program_options::variables_map vm;
+        boost::program_options::options_description desc("allowed options");
 
-        desc.add_options()
-                ("help,h",
-                 "this help message")
-                ("disable-hexdump,d",
-                 "disable hexdump of trace messages")
-                ("client-delay",
-                 po::value<size_t>()->default_value(0),
-                 "client delay (0 - disabled)")
-                ("server-delay",
-                 po::value<size_t>()->default_value(0),
-                 "server delay (0 - disabled)")
-                ("buffer-size,b",
-                 po::value<size_t>()->default_value(4096),
-                 "buffer size")
-                ("thread-pool-size,n",
-                 po::value<size_t>()->default_value(
-                     boost::thread::hardware_concurrency()),
-                 "thread pool size")
-                ("log-settings",
-                 po::value<std::string>()->default_value(""),
-                 "log settings file name")
-                ("log-level,l",
-                 po::value<std::string>()->default_value("info"),
-                 "log level (trace|debug|info|warning|error|fatal")
-                ("shost",
-                 po::value<std::string>()->default_value("localhost"),
-                 "source hostname")
-                ("sport",
-                 po::value<std::string>()->default_value("http-alt"),
-                 "source service name or port")
-                ("dhost",
-                 po::value<std::string>()->default_value("localhost"),
-                 "destination hostname")
-                ("dport",
-                 po::value<std::string>()->default_value("http"),
-                 "destination service name or port");
+        add_options(desc);
 
-        po::store(po::parse_command_line(argc, argv, desc), vm);
+        boost::program_options::store(
+                    boost::program_options::parse_command_line(
+                        argc,
+                        argv,
+                        desc),
+                    vm);
 
         if (vm.count("help"))
         {
@@ -68,22 +118,43 @@ int main(int argc, char* argv[])
             return EXIT_SUCCESS;
         }
 
+        if (vm.count("version"))
+        {
+            std::cout << "proxy version 1.0.0" << std::endl;
+            return EXIT_SUCCESS;
+        }
+
         core::logging::init(
                     vm["log-settings"].as<std::string>(),
                     vm["log-level"].as<std::string>());
 
-        net::proxy service(
-                    vm["shost"].as<std::string>(),
-                    vm["sport"].as<std::string>(),
-                    vm["dhost"].as<std::string>(),
-                    vm["dport"].as<std::string>(),
-                    vm["buffer-size"].as<size_t>(),
-                    vm["thread-pool-size"].as<size_t>(),
-                    !vm.count("disable-hexdump"),
-                    vm["client-delay"].as<size_t>(),
-                    vm["server-delay"].as<size_t>());
+        if (vm.count("settings-file"))
+        {
+            net::proxy_manager manager(
+                        vm["settings-file"].as<std::string>());
 
-        service.start();
+            manager.start();
+        }
+        else
+        {
+            net::proxy::config proxy_config;
+            boost::asio::io_service io_service;
+
+            proxy_config.shost_ = vm["shost"].as<std::string>();
+            proxy_config.dhost_ = vm["dhost"].as<std::string>();
+            proxy_config.sport_ = vm["sport"].as<std::string>();
+            proxy_config.dport_ = vm["dport"].as<std::string>();
+            proxy_config.buffer_size_ = vm["buffer-size"].as<size_t>();
+            proxy_config.hexdump_enabled_ = !vm.count("disable-hexdump");
+            proxy_config.client_delay_ = vm["client-delay"].as<size_t>();
+            proxy_config.server_delay_ = vm["server-delay"].as<size_t>();
+            //vm["thread-pool-size"].as<size_t>();
+
+            net::proxy service(boost::ref(io_service), proxy_config);
+
+            service.start();
+            io_service.run();
+        }
     }
     catch (std::exception& e)
     {
