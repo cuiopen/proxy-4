@@ -12,16 +12,23 @@
 #include <boost/asio.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/enable_shared_from_this.hpp>
+#include <boost/chrono.hpp>
 
-#include "log.h"
+#include "core/log.h"
 
 namespace net {
 
-class session :
-        public boost::enable_shared_from_this<session>
+class tcp_session :
+        public boost::enable_shared_from_this<tcp_session>
 {
 
 public:
+
+    typedef enum message_dump_ {
+        none,
+        hex,
+        ascii
+    } message_dump;
 
     typedef enum status_ {
         ready,
@@ -29,22 +36,38 @@ public:
         stopped
     } status;
 
-    typedef boost::shared_ptr<session> ptr;
+    typedef boost::shared_ptr<tcp_session> ptr;
 
     typedef std::pair<boost::shared_ptr<uint8_t[]>, size_t> sp_buffer;
 
-    session(
-            const std::string& name,
-            boost::asio::io_service& io_service,
-            const std::string& session_id,
-            const std::string& host,
-            const std::string& port,
-            size_t buffer_size,
-            bool enable_hexdump,
-            size_t client_delay,
-            size_t server_delay);
+    typedef boost::chrono::system_clock::time_point time_point;
 
-    virtual ~session();
+    typedef struct info_
+    {
+        status status_;
+        time_point start_time_;
+        time_point stop_time_;
+        uint64_t total_tx_;
+        uint64_t total_rx_;
+    } info;
+
+    typedef struct config_
+    {
+        std::string id_;
+        std::string type_;
+        std::string host_;
+        std::string port_;
+        size_t buffer_size_;
+        size_t client_delay_;
+        size_t server_delay_;
+        message_dump message_dump_;
+    } config;
+
+    tcp_session(
+            boost::asio::io_service& io_service,
+            const config& session_config);
+
+    virtual ~tcp_session();
 
     boost::asio::ip::tcp::socket& get_socket();
 
@@ -92,21 +115,9 @@ protected:
 
     boost::asio::ip::tcp::resolver::query to_;
 
-    std::string id_;
+    info info_;
 
-    size_t buffer_size_;
-
-    bool hexdump_enabled_;
-
-    uint64_t total_tx_;
-
-    uint64_t total_rx_;
-
-    size_t client_delay_;
-
-    size_t server_delay_;
-
-    status status_;
+    config config_;
 
     boost::mutex mutex_;
 

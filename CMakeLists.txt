@@ -43,8 +43,7 @@ endif()
 
 include_directories(
     ${Boost_INCLUDE_DIRS}
-    src/core
-    src/net)
+    src)
 
 target_link_libraries(
     ${PROJECT_NAME}

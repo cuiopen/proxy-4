@@ -12,70 +12,61 @@
 #include <boost/thread/lock_guard.hpp>
 #include <boost/thread/thread.hpp>
 
-#include "session.h"
+#include "net/tcp_session.h"
 using namespace net;
 
-session::session(
-        const std::string& name,
+tcp_session::tcp_session(
         boost::asio::io_service& io_service,
-        const std::string& session_id,
-        const std::string& host,
-        const std::string& port,
-        size_t buffer_size,
-        bool enable_hexdump,
-        size_t client_delay,
-        size_t server_delay) :
+        const tcp_session::config& config) :
     logger_(boost::log::keywords::channel =
-        std::string("net.session." + name + "." + session_id)),
+        std::string("net.tcp_session." + config.type_ + "." + config.id_)),
     io_service_(io_service),
     client_(io_service),
     server_(io_service),
     resolver_(io_service),
-    to_(host, port),
-    id_(session_id),
-    buffer_size_(buffer_size),
-    hexdump_enabled_(enable_hexdump),
-    total_tx_(0),
-    total_rx_(0),
-    client_delay_(client_delay),
-    server_delay_(server_delay),
-    status_(ready)
+    to_(config.host_, config.port_),
+    config_(config)
 {
+    info_.status_ = ready;
+    info_.total_tx_ = 0;
+    info_.total_rx_ = 0;
+
     LOG_INFO() << "ctor";
 }
 
-session::~session()
+tcp_session::~tcp_session()
 {
     LOG_INFO() << "dtor";
 }
 
-boost::asio::ip::tcp::socket& session::get_socket()
+boost::asio::ip::tcp::socket& tcp_session::get_socket()
 {
     return server_;
 }
 
-void session::start()
+void tcp_session::start()
 {
-    LOG_DEBUG() << "session started";
+    LOG_INFO() << "started";
+
+    info_.start_time_ = boost::chrono::system_clock::now();
+    info_.status_ = running;
 
     resolver_.async_resolve(
                 to_,
                 boost::bind(
-                    &session::handle_resolve,
+                    &tcp_session::handle_resolve,
                     this,
                     boost::asio::placeholders::error,
                     boost::asio::placeholders::iterator)
                 );
-
-    status_ = running;
 }
 
-const std::string& session::get_id()
+const std::string& tcp_session::get_id()
 {
-    return id_;
+    return config_.id_;
 }
 
-void session::handle_resolve(
+void tcp_session::handle_resolve(
         const boost::system::error_code& ec,
         boost::asio::ip::tcp::resolver::iterator it)
 {
@@ -92,7 +83,7 @@ void session::handle_resolve(
             client_.async_connect(
                         ep,
                         boost::bind(
-                            &session::handle_connect,
+                            &tcp_session::handle_connect,
                             this,
                             boost::asio::placeholders::error));
         }
@@ -104,7 +95,7 @@ void session::handle_resolve(
 
 }
 
-void session::handle_connect(
+void tcp_session::handle_connect(
         const boost::system::error_code& ec)
 {
     if (!ec)
@@ -115,14 +106,14 @@ void session::handle_connect(
         {
             sp_buffer buffer =
                     std::make_pair(
-                        boost::make_shared<uint8_t[]>(buffer_size_),
-                        buffer_size_);
+                        boost::make_shared<uint8_t[]>(config_.buffer_size_),
+                        config_.buffer_size_);
 
             client_.async_read_some(
                         boost::asio::buffer(
                             buffer.first.get(), buffer.second),
                         boost::bind(
-                            &session::handle_read, shared_from_this(),
+                            &tcp_session::handle_read, shared_from_this(),
                             boost::asio::placeholders::error,
                             boost::asio::placeholders::bytes_transferred,
                             buffer,
@@ -132,14 +123,14 @@ void session::handle_connect(
 
             buffer =
                     std::make_pair(
-                        boost::make_shared<uint8_t[]>(buffer_size_),
-                        buffer_size_);
+                        boost::make_shared<uint8_t[]>(config_.buffer_size_),
+                        config_.buffer_size_);
 
             server_.async_read_some(
                         boost::asio::buffer(
                             buffer.first.get(), buffer.second),
                         boost::bind(
-                            &session::handle_read, shared_from_this(),
+                            &tcp_session::handle_read, shared_from_this(),
                             boost::asio::placeholders::error,
                             boost::asio::placeholders::bytes_transferred,
                             buffer,
@@ -158,7 +149,7 @@ void session::handle_connect(
     }
 }
 
-void session::hexdump(
+void tcp_session::hexdump(
         size_t bytes_tranferred,
         sp_buffer buffer)
 {
@@ -180,7 +171,7 @@ void session::hexdump(
 
         if (!(i % 16))
         {
-            LOG_TRACE() << hex_out.str() << "   " << ascii_out.str();
+            LOG_DEBUG() << hex_out.str() << "   " << ascii_out.str();
 
             ascii_out.str("");
             hex_out.str("");
@@ -197,28 +188,34 @@ void session::hexdump(
             hex_out << "   ";
         }
 
-        LOG_TRACE() << hex_out.str() << "   " << ascii_out.str();
+        LOG_DEBUG() << hex_out.str() << "   " << ascii_out.str();
     }
 }
 
-void session::stop()
+void tcp_session::stop()
 {
     boost::lock_guard<boost::mutex> lock(mutex_);
 
-    if (status_ != stopped)
+    if (info_.status_ != stopped)
     {
         server_.close();
         client_.close();
-        status_ = stopped;
+        info_.status_ = stopped;
 
-        LOG_INFO() << "stopped tx=["
-                   << total_tx_ << "] rx=[" << total_rx_ << "]";
+        info_.stop_time_ = boost::chrono::system_clock::now();
+
+        LOG_INFO() << "stopped tx=[" << info_.total_tx_ << "] "
+                   << "rx=[" << info_.total_rx_ << "] "
+                   << "elapsed=[" << boost::chrono::duration_cast<
+                      boost::chrono::milliseconds>(
+                          info_.stop_time_ - info_.start_time_)
+                   << "]";
     }
 
     LOG_DEBUG() << "session stopped";
 }
 
-void session::handle_read(
+void tcp_session::handle_read(
         const boost::system::error_code& ec,
         size_t bytes_tranferred,
         sp_buffer buffer_read,
@@ -235,7 +232,7 @@ void session::handle_read(
                             buffer_read.first.get(),
                             bytes_tranferred),
                         boost::bind(
-                            &session::handle_send,
+                            &tcp_session::handle_send,
                             shared_from_this(),
                             boost::asio::placeholders::error,
                             boost::asio::placeholders::bytes_transferred,
@@ -245,50 +242,56 @@ void session::handle_read(
             {
                 boost::lock_guard<boost::mutex> lock(mutex_);
 
-                total_rx_ += bytes_tranferred;
+                info_.total_rx_ += bytes_tranferred;
 
-                LOG_TRACE() << "server=[" << from.local_endpoint().address()
+                LOG_DEBUG() << "server=[" << from.local_endpoint().address()
                             << ":" << from.local_endpoint().port() << "] -> "
                             << "client=[" << to.remote_endpoint().address()
                             << ":" << to.remote_endpoint().port() << "] "
                             << "bytes=[" << bytes_tranferred << "]";
 
-                if (server_delay_)
+                if (config_.server_delay_)
                     boost::this_thread::sleep_for(
-                                boost::chrono::microseconds(server_delay_));
+                                boost::chrono::microseconds(
+                                    config_.server_delay_));
             }
             else
             {
                 boost::lock_guard<boost::mutex> lock(mutex_);
 
-                total_tx_ += bytes_tranferred;
+                info_.total_tx_ += bytes_tranferred;
 
-                LOG_TRACE() << "client=[" << from.local_endpoint().address()
+                LOG_DEBUG() << "client=[" << from.local_endpoint().address()
                             << ":" << from.local_endpoint().port() << "] -> "
                             << "server=[" << to.remote_endpoint().address()
                             << ":" << to.remote_endpoint().port() << "] "
                             << "bytes=[" << bytes_tranferred << "]";
 
-                if (client_delay_)
+                if (config_.client_delay_)
                     boost::this_thread::sleep_for(
-                                boost::chrono::microseconds(client_delay_));
+                                boost::chrono::microseconds(
+                                    config_.client_delay_));
             }
 
-            if (hexdump_enabled_)
+            if (config_.message_dump_ == hex)
             {
                 hexdump(bytes_tranferred, buffer_read);
+            }
+            else if (config_.message_dump_ == ascii)
+            {
+                LOG_DEBUG() << "message=[" << buffer_read.first.get() << "]";
             }
 
             sp_buffer buffer =
                     std::make_pair(
-                        boost::make_shared<uint8_t[]>(buffer_size_),
-                        buffer_size_);
+                        boost::make_shared<uint8_t[]>(config_.buffer_size_),
+                        config_.buffer_size_);
 
             from.async_read_some(
                         boost::asio::buffer(
                             buffer.first.get(), buffer.second),
                         boost::bind(
-                            &session::handle_read, shared_from_this(),
+                            &tcp_session::handle_read, shared_from_this(),
                             boost::asio::placeholders::error,
                             boost::asio::placeholders::bytes_transferred,
                             buffer,
@@ -318,7 +321,7 @@ void session::handle_read(
 
 }
 
-void session::handle_send(
+void tcp_session::handle_send(
         const boost::system::error_code& ec,
         size_t bytes_tranferred,
         sp_buffer)

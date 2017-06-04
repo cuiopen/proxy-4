@@ -6,32 +6,33 @@
 -->
 <proxy-settings>
     <thread-pool>
-        <size>16</size>
+        <size>1</size>
     </thread-pool>
-    <log-settings>
-        <severity>trace</severity>
-        <file-name>log_settings.txt</file-name>
-    </log-settings>
+    <logging>
+        <severity>debug</severity>
+        <file-name></file-name>
+    </logging>
     <proxies>
     <proxy>
-        <name>my_ssh</name>
+        <name>ssh</name>
+        <active>1</active>
         <shost>0.0.0.0</shost>
         <sport>2222</sport>
         <dhost>localhost</dhost>
         <dport>ssh</dport>
         <buffer-size>8192</buffer-size>
-        <enable-hexdump>1</enable-hexdump>
         <client-delay>0</client-delay>
         <server-delay>0</server-delay>
     </proxy>
     <proxy>
-        <name>http</name>
+        <name>squid</name>
+        <active>1</active>
         <shost>localhost</shost>
         <sport>http-alt</sport>
         <dhost>localhost</dhost>
-        <dport>http</dport>
+        <dport>3128</dport>
         <buffer-size>4096</buffer-size>
-        <enable-hexdump>1</enable-hexdump>
+        <message-dump>hex</message-dump>
         <client-delay>0</client-delay>
         <server-delay>0</server-delay>
     </proxy>

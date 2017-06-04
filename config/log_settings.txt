@@ -24,4 +24,4 @@ Destination=TextFile
 FileName=proxy_sessions.log
 AutoFlush=true
 Format="%TimeStamp%: <%Severity%> [%Channel%] %Message%"
-Filter="%Channel% begins_with net.session"
+Filter="%Channel% begins_with net.tcp_session"

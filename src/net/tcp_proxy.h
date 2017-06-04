@@ -17,18 +17,18 @@
 #include <boost/random/random_device.hpp>
 #include <boost/random/uniform_int_distribution.hpp>
 
-#include "session.h"
-#include "log.h"
+#include "net/tcp_session.h"
+#include "core/log.h"
 
 namespace net {
 
-class proxy :
-        public boost::enable_shared_from_this<proxy>
+class tcp_proxy :
+        public boost::enable_shared_from_this<tcp_proxy>
 {
 
 public:
 
-    typedef boost::shared_ptr<proxy> ptr;
+    typedef boost::shared_ptr<tcp_proxy> ptr;
 
     typedef boost::shared_ptr<boost::asio::ip::tcp::socket> socket_ptr;
 
@@ -39,18 +39,17 @@ public:
         std::string sport_;
         std::string dhost_;
         std::string dport_;
-        size_t buffer_size_;
-        size_t thread_pool_size_;
-        bool hexdump_enabled_;
         size_t client_delay_;
         size_t server_delay_;
+        size_t buffer_size_;
+        std::string message_dump_;
     } config;
 
-    proxy(
+    tcp_proxy(
             boost::asio::io_service& io_service,
             const config& proxy_config);
 
-    virtual ~proxy();
+    virtual ~tcp_proxy();
 
     void start();
 
@@ -64,7 +63,7 @@ protected:
 
     void handle_accept(
             const boost::system::error_code& ec,
-            session::ptr session);
+            tcp_session::ptr tcp_session);
 
     void handle_signal(
             const boost::system::error_code& error,
@@ -86,7 +85,7 @@ protected:
 
     boost::asio::ip::tcp::resolver::query to_;
 
-    std::vector<session::ptr> sessions_;
+    std::vector<tcp_session::ptr> sessions_;
 
     boost::random::random_device random_device_;
 

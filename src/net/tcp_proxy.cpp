@@ -12,13 +12,13 @@
 #include <boost/foreach.hpp>
 using namespace boost::asio;
 
-#include "proxy.h"
+#include "net/tcp_proxy.h"
 using namespace net;
 
-proxy::proxy(
+tcp_proxy::tcp_proxy(
         boost::asio::io_service& io_service,
-        const proxy::config& config) :
-       logger_(boost::log::keywords::channel = "net.proxy." + config.name_),
+        const tcp_proxy::config& config) :
+       logger_(boost::log::keywords::channel = "net.tcp_proxy." + config.name_),
        io_service_(io_service),
        client_(io_service_),
        server_(io_service_),
@@ -32,12 +32,12 @@ proxy::proxy(
     LOG_INFO() << "ctor";
 }
 
-proxy::~proxy()
+tcp_proxy::~tcp_proxy()
 {
     LOG_INFO() << "dtor";
 }
 
-void proxy::start()
+void tcp_proxy::start()
 {
     LOG_INFO() << "starting proxy "
                << "src=[" << from_.host_name()
@@ -45,26 +45,25 @@ void proxy::start()
                << "dst=[" << to_.host_name()
                << ":" << to_.service_name() << "]";
 
-    LOG_INFO() << "threads=[" << config_.thread_pool_size_ << "] "
-               << "hexdump=[" << config_.hexdump_enabled_ << "] "
-               << "buffer_size=[" << config_.buffer_size_ << "] ";
+    LOG_INFO() << "message-dump=[" << config_.message_dump_ << "] "
+               << "buffer-size=[" << config_.buffer_size_ << "] ";
 
-    LOG_INFO() << "client_delay=[" << config_.client_delay_ << "] "
-               << "server_delay=[" << config_.server_delay_ << "]";
+    LOG_INFO() << "client-delay=[" << config_.client_delay_ << "] "
+               << "server-delay=[" << config_.server_delay_ << "]";
 
     resolver_.async_resolve(
                 from_,
                 boost::bind(
-                    &proxy::handle_resolve,
+                    &tcp_proxy::handle_resolve,
                     this,
                     placeholders::error,
                     placeholders::iterator)
                 );
 }
 
-void proxy::stop()
+void tcp_proxy::stop()
 {
-    BOOST_FOREACH(std::vector<session::ptr>::value_type& v, sessions_)
+    BOOST_FOREACH(std::vector<tcp_session::ptr>::value_type& v, sessions_)
     {
         v->stop();
     }
@@ -74,7 +73,7 @@ void proxy::stop()
     LOG_INFO() << "proxy stopped";
 }
 
-void proxy::handle_resolve(
+void tcp_proxy::handle_resolve(
         const boost::system::error_code& ec,
         boost::asio::ip::tcp::resolver::iterator it)
 {
@@ -96,7 +95,7 @@ void proxy::handle_resolve(
             acceptor_.listen();
 
             boost::system::error_code success;
-            session::ptr null;
+            tcp_session::ptr null;
             handle_accept(success, null);
         }
     }
@@ -106,9 +105,9 @@ void proxy::handle_resolve(
     }
 }
 
-void proxy::handle_accept(
+void tcp_proxy::handle_accept(
         const boost::system::error_code& ec,
-        session::ptr session_ptr)
+        tcp_session::ptr session_ptr)
 {
     if (!ec)
     {
@@ -127,22 +126,38 @@ void proxy::handle_accept(
         session_id << std::hex << std::setfill('0') << std::setw(8)
                    << uniform_dist_(random_device_);
 
-        session::ptr ptr =
-                boost::make_shared<session>(
-                    config_.name_,
+        tcp_session::config session_config;
+
+        session_config.id_ = session_id.str();
+        session_config.type_ = config_.name_;
+        session_config.buffer_size_ = config_.buffer_size_;
+        session_config.host_ = to_.host_name();
+        session_config.port_ = to_.service_name();
+        session_config.client_delay_ = config_.client_delay_;
+        session_config.server_delay_ = config_.server_delay_;
+
+        if (config_.message_dump_ == "hex")
+        {
+            session_config.message_dump_ = tcp_session::hex;
+        }
+        else if (config_.message_dump_ == "ascii")
+        {
+            session_config.message_dump_ = tcp_session::ascii;
+        }
+        else
+        {
+            session_config.message_dump_ = tcp_session::none;
+        }
+
+        tcp_session::ptr ptr =
+                boost::make_shared<tcp_session>(
                     boost::ref(io_service_),
-                    session_id.str(),
-                    to_.host_name(),
-                    to_.service_name(),
-                    config_.buffer_size_,
-                    config_.hexdump_enabled_,
-                    config_.client_delay_,
-                    config_.server_delay_);
+                    session_config);
 
         acceptor_.async_accept(
                     ptr->get_socket(),
                     boost::bind(
-                        &proxy::handle_accept,
+                        &tcp_proxy::handle_accept,
                         this,
                         placeholders::error,
                         ptr));

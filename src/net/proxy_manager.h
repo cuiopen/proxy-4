@@ -13,8 +13,8 @@
 #include <boost/asio.hpp>
 #include <boost/thread/thread_pool.hpp>
 
-#include "proxy.h"
-#include "log.h"
+#include "net/tcp_proxy.h"
+#include "core/log.h"
 
 namespace net {
 
@@ -22,16 +22,24 @@ class proxy_manager
 {
 public:
 
-    typedef std::map<std::string, proxy::ptr> proxy_map;
+    typedef std::map<std::string, tcp_proxy::ptr> proxy_map;
 
     proxy_manager(
             const std::string& settings_file);
+
+    proxy_manager(
+            net::tcp_proxy::config proxy_config);
 
     virtual ~proxy_manager();
 
     virtual void start();
 
 protected:
+
+    const std::string CONFIG_ROOT = "proxy-settings";
+
+    void create_proxy(
+            tcp_proxy::config& config);
 
     void handle_signal(
             const boost::system::error_code& ec,
@@ -48,6 +56,8 @@ protected:
     boost::asio::io_service io_service_;
 
     boost::asio::signal_set signal_set_;
+
+    std::string settings_file_;
 };
 
 } // namespace net

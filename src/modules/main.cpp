@@ -11,10 +11,12 @@
 
 #include <boost/thread.hpp>
 #include <boost/program_options.hpp>
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/xml_parser.hpp>
 
-#include "proxy.h"
-#include "proxy_manager.h"
-#include "log.h"
+#include "net/tcp_proxy.h"
+#include "net/proxy_manager.h"
+#include "core/log.h"
 
 void add_options(
         boost::program_options::options_description& desc)
@@ -35,8 +37,9 @@ void add_options(
              "settings file");
 
     desc.add_options()
-            ("disable-hexdump,d",
-             "disable hexdump of trace messages");
+            ("message-dump,d",
+             po::value<std::string>()->default_value("none"),
+             "enable message dump of messages (ascii|hex|none)");
 
     desc.add_options()
             ("client-delay",
@@ -52,12 +55,6 @@ void add_options(
             ("buffer-size,b",
              po::value<size_t>()->default_value(8192),
              "buffer size");
-
-    desc.add_options()
-            ("thread-pool-size,n",
-             po::value<size_t>()->default_value(
-                 boost::thread::hardware_concurrency()),
-             "thread pool size");
 
     desc.add_options()
             ("log-settings",
@@ -90,14 +87,10 @@ void add_options(
              "destination service name or port");
 }
 
-void load_settings(
-        const std::string& file)
-{
-
-}
-
 int main(int argc, char* argv[])
 {
+    const std::string MODULE_VERSION = "1.0.0";
+
     try
     {
         boost::program_options::variables_map vm;
@@ -120,40 +113,45 @@ int main(int argc, char* argv[])
 
         if (vm.count("version"))
         {
-            std::cout << "proxy version 1.0.0" << std::endl;
+            std::cout << "proxy version " << MODULE_VERSION << std::endl;
             return EXIT_SUCCESS;
         }
 
-        core::logging::init(
-                    vm["log-settings"].as<std::string>(),
-                    vm["log-level"].as<std::string>());
-
         if (vm.count("settings-file"))
         {
+            boost::property_tree::ptree config;
+            boost::property_tree::read_xml(
+                        vm["settings-file"].as<std::string>(), config);
+
+            const std::string LOGGING_ROOT = "proxy-settings.logging";
+
+            core::logging::init(
+                        config.get(LOGGING_ROOT + ".file-name", ""),
+                        config.get(LOGGING_ROOT + ".severity", "info"));
+
             net::proxy_manager manager(
                         vm["settings-file"].as<std::string>());
-
             manager.start();
         }
         else
         {
-            net::proxy::config proxy_config;
-            boost::asio::io_service io_service;
+            net::tcp_proxy::config config;
 
-            proxy_config.shost_ = vm["shost"].as<std::string>();
-            proxy_config.dhost_ = vm["dhost"].as<std::string>();
-            proxy_config.sport_ = vm["sport"].as<std::string>();
-            proxy_config.dport_ = vm["dport"].as<std::string>();
-            proxy_config.buffer_size_ = vm["buffer-size"].as<size_t>();
-            proxy_config.hexdump_enabled_ = !vm.count("disable-hexdump");
-            proxy_config.client_delay_ = vm["client-delay"].as<size_t>();
-            proxy_config.server_delay_ = vm["server-delay"].as<size_t>();
-            //vm["thread-pool-size"].as<size_t>();
+            core::logging::init(
+                        vm["log-settings"].as<std::string>(),
+                        vm["log-level"].as<std::string>());
 
-            net::proxy service(boost::ref(io_service), proxy_config);
+            config.shost_ = vm["shost"].as<std::string>();
+            config.dhost_ = vm["dhost"].as<std::string>();
+            config.sport_ = vm["sport"].as<std::string>();
+            config.dport_ = vm["dport"].as<std::string>();
+            config.buffer_size_ = vm["buffer-size"].as<size_t>();
+            config.message_dump_ = vm["message-dump"].as<std::string>();
+            config.client_delay_ = vm["client-delay"].as<size_t>();
+            config.server_delay_ = vm["server-delay"].as<size_t>();
 
-            service.start();
-            io_service.run();
+            net::proxy_manager manager(config);
+            manager.start();
         }
     }
     catch (std::exception& e)
