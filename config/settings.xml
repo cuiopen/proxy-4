@@ -13,28 +13,28 @@
         <file-name></file-name>
     </logging>
     <proxies>
-    <proxy>
-        <name>ssh</name>
-        <active>1</active>
-        <shost>0.0.0.0</shost>
-        <sport>2222</sport>
-        <dhost>localhost</dhost>
-        <dport>ssh</dport>
-        <buffer-size>8192</buffer-size>
-        <client-delay>0</client-delay>
-        <server-delay>0</server-delay>
-    </proxy>
-    <proxy>
-        <name>squid</name>
-        <active>1</active>
-        <shost>localhost</shost>
-        <sport>http-alt</sport>
-        <dhost>localhost</dhost>
-        <dport>3128</dport>
-        <buffer-size>4096</buffer-size>
-        <message-dump>hex</message-dump>
-        <client-delay>0</client-delay>
-        <server-delay>0</server-delay>
-    </proxy>
-    </proxy-list>
+        <proxy>
+            <name>ssh</name>
+            <active>1</active>
+            <shost>0.0.0.0</shost>
+            <sport>2222</sport>
+            <dhost>localhost</dhost>
+            <dport>ssh</dport>
+            <buffer-size>8192</buffer-size>
+            <client-delay>0</client-delay>
+            <server-delay>0</server-delay>
+        </proxy>
+        <proxy>
+            <name>squid</name>
+            <active>1</active>
+            <shost>localhost</shost>
+            <sport>http-alt</sport>
+            <dhost>localhost</dhost>
+            <dport>3128</dport>
+            <buffer-size>4096</buffer-size>
+            <message-dump>hex</message-dump>
+            <client-delay>0</client-delay>
+            <server-delay>0</server-delay>
+        </proxy>
+    </proxies>
 </proxy-settings>
