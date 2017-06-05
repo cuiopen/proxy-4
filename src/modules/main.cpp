@@ -90,6 +90,7 @@ void add_options(
 int main(int argc, char* argv[])
 {
     const std::string MODULE_VERSION = "1.0.0";
+    boost::shared_ptr<net::proxy_manager> manager = nullptr;
 
     try
     {
@@ -129,9 +130,8 @@ int main(int argc, char* argv[])
                         config.get(LOGGING_ROOT + ".file-name", ""),
                         config.get(LOGGING_ROOT + ".severity", "info"));
 
-            net::proxy_manager manager(
-                        vm["settings-file"].as<std::string>());
-            manager.start();
+            manager = boost::make_shared<net::proxy_manager>();
+            manager->start(vm["settings-file"].as<std::string>());
         }
         else
         {
@@ -150,18 +150,26 @@ int main(int argc, char* argv[])
             config.client_delay_ = vm["client-delay"].as<size_t>();
             config.server_delay_ = vm["server-delay"].as<size_t>();
 
-            net::proxy_manager manager(config);
-            manager.start();
+            manager = boost::make_shared<net::proxy_manager>();
+            manager->start(config);
         }
     }
     catch (std::exception& e)
     {
+        if (manager)
+            manager->stop();
+
         std::cerr << "std::exception: " << e.what() << std::endl;
+
         return EXIT_FAILURE;
     }
     catch (...)
     {
+        if (manager)
+            manager->stop();
+
         std::cerr << "unknown exception" << std::endl;
+
         return EXIT_FAILURE;
     }
 

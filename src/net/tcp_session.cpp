@@ -66,6 +66,11 @@ const std::string& tcp_session::get_id()
     return config_.id_;
 }
 
+const tcp_session::info& tcp_session::get_info()
+{
+    return info_;
+}
+
 void tcp_session::handle_resolve(
         const boost::system::error_code& ec,
         boost::asio::ip::tcp::resolver::iterator it)
@@ -204,14 +209,14 @@ void tcp_session::stop()
 
         info_.stop_time_ = boost::chrono::system_clock::now();
 
-        LOG_DEBUG() << "stopped";
-
         LOG_INFO() << "stats tx=[" << info_.total_tx_ << "] "
                    << "rx=[" << info_.total_rx_ << "] "
                    << "elapsed=[" << boost::chrono::duration_cast<
                       boost::chrono::milliseconds>(
                           info_.stop_time_ - info_.start_time_)
                    << "]";
+
+        LOG_DEBUG() << "stopped";
 
         signal_stopped_(shared_from_this());
     }
@@ -246,10 +251,15 @@ void tcp_session::handle_read(
 
                 info_.total_rx_ += bytes_tranferred;
 
+
                 LOG_DEBUG() << "server=[" << from.local_endpoint().address()
-                            << ":" << from.local_endpoint().port() << "] -> "
+                            << ":" << from.local_endpoint().port() << "/"
+                            << (from.local_endpoint().address().is_v4() ?
+                                    "ipv4" : "ipv6") << "] -> "
                             << "client=[" << to.remote_endpoint().address()
-                            << ":" << to.remote_endpoint().port() << "] "
+                            << ":" << to.remote_endpoint().port() << "/"
+                            << (to.local_endpoint().address().is_v4() ?
+                                    "ipv4" : "ipv6") << "] "
                             << "bytes=[" << bytes_tranferred << "]";
 
                 if (config_.server_delay_)
@@ -264,10 +274,15 @@ void tcp_session::handle_read(
                 info_.total_tx_ += bytes_tranferred;
 
                 LOG_DEBUG() << "client=[" << from.local_endpoint().address()
-                            << ":" << from.local_endpoint().port() << "] -> "
+                            << ":" << from.local_endpoint().port() << "/"
+                            << (from.local_endpoint().address().is_v4() ?
+                                    "ipv4" : "ipv6") << "] -> "
                             << "server=[" << to.remote_endpoint().address()
-                            << ":" << to.remote_endpoint().port() << "] "
+                            << ":" << to.remote_endpoint().port() << "/"
+                            << (to.local_endpoint().address().is_v4() ?
+                                    "ipv4" : "ipv6") << "] "
                             << "bytes=[" << bytes_tranferred << "]";
+
 
                 if (config_.client_delay_)
                     boost::this_thread::sleep_for(

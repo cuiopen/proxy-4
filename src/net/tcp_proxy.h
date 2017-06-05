@@ -47,6 +47,17 @@ public:
         std::string message_dump_;
     } config;
 
+    typedef boost::chrono::system_clock::time_point time_point;
+
+    typedef struct info_
+    {
+        time_point start_time_;
+        time_point stop_time_;
+        size_t total_sessions_;
+        uint64_t total_tx_;
+        uint64_t total_rx_;
+    } info;
+
     tcp_proxy(
             boost::asio::io_service& io_service,
             const config& proxy_config);
@@ -78,10 +89,6 @@ protected:
 
     boost::asio::io_service& io_service_;
 
-    boost::asio::ip::tcp::socket client_;
-
-    boost::asio::ip::tcp::socket server_;
-
     boost::asio::ip::tcp::acceptor acceptor_;
 
     boost::asio::ip::tcp::resolver resolver_;
@@ -97,6 +104,9 @@ protected:
     boost::random::uniform_int_distribution<uint32_t> uniform_dist_;
 
     config config_;
+
+    info info_;
+
 };
 
 } // namespace net

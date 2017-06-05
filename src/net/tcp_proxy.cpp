@@ -5,10 +5,13 @@
 //          http://www.boost.org/LICENSE_1_0.txt)
 //
 #include <iostream>
+#include <sstream>
 #include <iomanip>
+#include <stdexcept>
 
-#include <boost/make_shared.hpp>
 #include <boost/asio.hpp>
+#include <boost/chrono.hpp>
+#include <boost/make_shared.hpp>
 #include <boost/foreach.hpp>
 using namespace boost::asio;
 
@@ -20,16 +23,15 @@ tcp_proxy::tcp_proxy(
         const tcp_proxy::config& config) :
        logger_(boost::log::keywords::channel = "net.tcp_proxy." + config.name_),
        io_service_(io_service),
-       client_(io_service_),
-       server_(io_service_),
        acceptor_(io_service_),
        resolver_(io_service_),
        from_(config.shost_, config.sport_),
        to_(config.dhost_, config.dport_),
-       uniform_dist_(0, INT32_MAX),
+       uniform_dist_(0, UINT32_MAX),
        config_(config)
 {
     LOG_TRACE() << "ctor";
+    memset(&info_, 0, sizeof(info_));
 }
 
 tcp_proxy::~tcp_proxy()
@@ -39,6 +41,8 @@ tcp_proxy::~tcp_proxy()
 
 void tcp_proxy::start()
 {
+    info_.start_time_ = boost::chrono::system_clock::now();
+
     LOG_INFO() << "starting source=[" << from_.host_name() << ":"
                << from_.service_name() << "] "
                << "destination=[" << to_.host_name() << ":"
@@ -69,13 +73,27 @@ void tcp_proxy::stop()
 
     sessions_.clear();
 
-    LOG_INFO() << "stopped";
+    info_.stop_time_ = boost::chrono::system_clock::now();
+
+    LOG_INFO() << "stats "
+               << "sessions=[" << info_.total_sessions_ << "] "
+               << "tx=[" << info_.total_tx_ << "] "
+               << "rx=[" << info_.total_rx_ << "] "
+               << "elapsed=[" << boost::chrono::duration_cast<
+                  boost::chrono::milliseconds>(
+                      info_.stop_time_ - info_.start_time_)
+               << "]";
+    LOG_DEBUG() << "stopped";
 }
 
 void tcp_proxy::handle_session_stopped(
         tcp_session::ptr session_ptr)
 {
     LOG_INFO() << "removing session=[" << session_ptr->get_id() << "]";
+
+    info_.total_rx_ += session_ptr->get_info().total_rx_;
+    info_.total_tx_ += session_ptr->get_info().total_tx_;
+    ++info_.total_sessions_;
 
     sessions_.erase(session_ptr->get_id());
 }
@@ -87,18 +105,21 @@ void tcp_proxy::handle_resolve(
     if (!ec)
     {
         ip::tcp::resolver::iterator end;
+
         if (it != end)
         {
             ip::tcp::endpoint ep(*it);
 
             LOG_INFO() << "binding endpoint=["
-                       << ep.address() << ":" << ep.port() << "]";
+                       << ep.address() << ":" << ep.port() << "/"
+                       << (ep.address().is_v4() ? "ipv4" : "ipv6") << "]";
 
             acceptor_.open(ep.protocol());
             acceptor_.set_option(socket_base::reuse_address(true));
             acceptor_.bind(ep);
 
             LOG_INFO() << "listening";
+
             acceptor_.listen();
 
             boost::system::error_code success;

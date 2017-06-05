@@ -78,6 +78,8 @@ public:
 
     const std::string& get_id();
 
+    const info& get_info();
+
     boost::signals2::signal<void(tcp_session::ptr)> signal_stopped_;
 
 protected:
