@@ -25,14 +25,20 @@ namespace trivial = boost::log::trivial;
 namespace keywords = boost::log::keywords;
 namespace expr = boost::log::expressions;
 
-#include "log.h"
+#include "core/log.h"
 using namespace core;
 
-BOOST_LOG_ATTRIBUTE_KEYWORD(timestamp, "TimeStamp", boost::posix_time::ptime)
-BOOST_LOG_ATTRIBUTE_KEYWORD(severity, "Severity", trivial::severity_level)
-BOOST_LOG_ATTRIBUTE_KEYWORD(channel, "Channel", std::string)
-BOOST_LOG_ATTRIBUTE_KEYWORD(thread_id, "ThreadID",
-                            attrs::current_thread_id::value_type)
+BOOST_LOG_ATTRIBUTE_KEYWORD(
+        timestamp, "TimeStamp", boost::posix_time::ptime)
+
+BOOST_LOG_ATTRIBUTE_KEYWORD(
+        severity, "Severity", trivial::severity_level)
+
+BOOST_LOG_ATTRIBUTE_KEYWORD(
+        channel, "Channel", std::string)
+
+BOOST_LOG_ATTRIBUTE_KEYWORD(
+        thread_id, "ThreadID", attrs::current_thread_id::value_type)
 
 void logging::init(
         const std::string& settings_file,
@@ -47,6 +53,7 @@ void logging::init(
     if (!settings_file.empty())
     {
         std::ifstream settings(settings_file.c_str());
+
         if (!settings.is_open())
         {
             std::ostringstream errm;
@@ -59,6 +66,7 @@ void logging::init(
     else
     {
         std::map< std::string, trivial::severity_level > severity_map;
+
         severity_map["trace"] = trivial::trace;
         severity_map["debug"] = trivial::debug;
         severity_map["info"] = trivial::info;

@@ -20,10 +20,6 @@
 #define LOG_ERROR() BOOST_LOG_SEV(logger_, boost::log::trivial::error)
 #define LOG_FATAL() BOOST_LOG_SEV(logger_, boost::log::trivial::fatal)
 
-void init_log_system(
-        const std::string& settings_file,
-        const std::string& severity_level);
-
 namespace core {
 
 class logging
