@@ -31,12 +31,12 @@ tcp_session::tcp_session(
     info_.total_tx_ = 0;
     info_.total_rx_ = 0;
 
-    LOG_INFO() << "ctor";
+    LOG_TRACE() << "ctor";
 }
 
 tcp_session::~tcp_session()
 {
-    LOG_INFO() << "dtor";
+    LOG_TRACE() << "dtor";
 }
 
 boost::asio::ip::tcp::socket& tcp_session::get_socket()
@@ -204,15 +204,17 @@ void tcp_session::stop()
 
         info_.stop_time_ = boost::chrono::system_clock::now();
 
-        LOG_INFO() << "stopped tx=[" << info_.total_tx_ << "] "
+        LOG_DEBUG() << "stopped";
+
+        LOG_INFO() << "stats tx=[" << info_.total_tx_ << "] "
                    << "rx=[" << info_.total_rx_ << "] "
                    << "elapsed=[" << boost::chrono::duration_cast<
                       boost::chrono::milliseconds>(
                           info_.stop_time_ - info_.start_time_)
                    << "]";
-    }
 
-    LOG_DEBUG() << "session stopped";
+        signal_stopped_(shared_from_this());
+    }
 }
 
 void tcp_session::handle_read(

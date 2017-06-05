@@ -7,7 +7,7 @@
 #pragma once
 
 #include <string>
-#include <vector>
+#include <map>
 
 #include <boost/asio.hpp>
 #include <boost/thread/thread_pool.hpp>
@@ -31,6 +31,8 @@ public:
     typedef boost::shared_ptr<tcp_proxy> ptr;
 
     typedef boost::shared_ptr<boost::asio::ip::tcp::socket> socket_ptr;
+
+    typedef std::map<std::string, tcp_session::ptr> session_map;
 
     typedef struct config_
     {
@@ -56,6 +58,9 @@ public:
     void stop();
 
 protected:
+
+    void handle_session_stopped(
+            tcp_session::ptr session_ptr);
 
     void handle_resolve(
             const boost::system::error_code& ec,
@@ -85,7 +90,7 @@ protected:
 
     boost::asio::ip::tcp::resolver::query to_;
 
-    std::vector<tcp_session::ptr> sessions_;
+    session_map sessions_;
 
     boost::random::random_device random_device_;
 

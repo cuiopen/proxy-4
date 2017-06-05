@@ -29,24 +29,23 @@ tcp_proxy::tcp_proxy(
        uniform_dist_(0, INT32_MAX),
        config_(config)
 {
-    LOG_INFO() << "ctor";
+    LOG_TRACE() << "ctor";
 }
 
 tcp_proxy::~tcp_proxy()
 {
-    LOG_INFO() << "dtor";
+    LOG_TRACE() << "dtor";
 }
 
 void tcp_proxy::start()
 {
-    LOG_INFO() << "starting proxy "
-               << "src=[" << from_.host_name()
-               << ":" << from_.service_name() << "] "
-               << "dst=[" << to_.host_name()
-               << ":" << to_.service_name() << "]";
+    LOG_INFO() << "starting source=[" << from_.host_name() << ":"
+               << from_.service_name() << "] "
+               << "destination=[" << to_.host_name() << ":"
+               << to_.service_name() << "]";
 
     LOG_INFO() << "message-dump=[" << config_.message_dump_ << "] "
-               << "buffer-size=[" << config_.buffer_size_ << "] ";
+               << "buffer-size=[" << config_.buffer_size_ << "]";
 
     LOG_INFO() << "client-delay=[" << config_.client_delay_ << "] "
                << "server-delay=[" << config_.server_delay_ << "]";
@@ -63,14 +62,22 @@ void tcp_proxy::start()
 
 void tcp_proxy::stop()
 {
-    BOOST_FOREACH(std::vector<tcp_session::ptr>::value_type& v, sessions_)
+    BOOST_FOREACH(session_map::value_type& v, sessions_)
     {
-        v->stop();
+        v.second->stop();
     }
 
     sessions_.clear();
 
-    LOG_INFO() << "proxy stopped";
+    LOG_INFO() << "stopped";
+}
+
+void tcp_proxy::handle_session_stopped(
+        tcp_session::ptr session_ptr)
+{
+    LOG_INFO() << "removing session=[" << session_ptr->get_id() << "]";
+
+    sessions_.erase(session_ptr->get_id());
 }
 
 void tcp_proxy::handle_resolve(
@@ -84,7 +91,7 @@ void tcp_proxy::handle_resolve(
         {
             ip::tcp::endpoint ep(*it);
 
-            LOG_INFO() << "from endpoint=["
+            LOG_INFO() << "binding endpoint=["
                        << ep.address() << ":" << ep.port() << "]";
 
             acceptor_.open(ep.protocol());
@@ -115,12 +122,12 @@ void tcp_proxy::handle_accept(
 
         if (session_ptr)
         {
-            LOG_INFO() << "connection accepted starting session=["
+            LOG_INFO() << "connection accepted - session=["
                        << session_ptr->get_id() << "]";
 
             session_ptr->start();
 
-            sessions_.push_back(session_ptr);
+            sessions_[session_ptr->get_id()] = session_ptr;
         }
 
         session_id << std::hex << std::setfill('0') << std::setw(8)
@@ -153,6 +160,12 @@ void tcp_proxy::handle_accept(
                 boost::make_shared<tcp_session>(
                     boost::ref(io_service_),
                     session_config);
+
+        ptr->signal_stopped_.connect(
+                    boost::bind(
+                        &tcp_proxy::handle_session_stopped,
+                        this,
+                        _1));
 
         acceptor_.async_accept(
                     ptr->get_socket(),

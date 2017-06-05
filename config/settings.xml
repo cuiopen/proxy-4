@@ -9,24 +9,25 @@
         <size>1</size>
     </thread-pool>
     <logging>
-        <severity>debug</severity>
+        <severity>info</severity>
         <file-name></file-name>
     </logging>
     <proxies>
         <proxy>
             <name>ssh</name>
             <active>1</active>
-            <shost>0.0.0.0</shost>
+            <shost>localhost</shost>
             <sport>2222</sport>
             <dhost>localhost</dhost>
             <dport>ssh</dport>
             <buffer-size>8192</buffer-size>
             <client-delay>0</client-delay>
             <server-delay>0</server-delay>
+            <message-dump>hex</message-dump>
         </proxy>
         <proxy>
             <name>squid</name>
-            <active>1</active>
+            <active>0</active>
             <shost>localhost</shost>
             <sport>http-alt</sport>
             <dhost>localhost</dhost>

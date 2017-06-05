@@ -13,6 +13,7 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/enable_shared_from_this.hpp>
 #include <boost/chrono.hpp>
+#include <boost/signals2.hpp>
 
 #include "core/log.h"
 
@@ -76,6 +77,8 @@ public:
     void stop();
 
     const std::string& get_id();
+
+    boost::signals2::signal<void(tcp_session::ptr)> signal_stopped_;
 
 protected:
 

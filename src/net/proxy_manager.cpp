@@ -16,7 +16,7 @@ proxy_manager::proxy_manager(
     signal_set_(io_service_),
     settings_file_(settings_file)
 {
-    LOG_INFO() << "ctor";
+    LOG_TRACE() << "ctor";
 }
 
 proxy_manager::proxy_manager(
@@ -24,14 +24,14 @@ proxy_manager::proxy_manager(
     logger_(boost::log::keywords::channel = "net.proxy_manager"),
     signal_set_(io_service_)
 {
-    LOG_INFO() << "ctor";
+    LOG_TRACE() << "ctor";
     create_proxy(proxy_config);
 }
 
 proxy_manager::~proxy_manager()
 {
     thread_group_.join_all();
-    LOG_INFO() << "dtor";
+    LOG_TRACE() << "dtor";
 }
 
 void proxy_manager::create_proxy(
@@ -58,6 +58,8 @@ void proxy_manager::start()
 
     if (!settings_file_.empty())
     {
+        LOG_INFO() << "reading settings from file=[" << settings_file_ << "]";
+
         boost::property_tree::read_xml(settings_file_, config_);
 
         BOOST_FOREACH(
