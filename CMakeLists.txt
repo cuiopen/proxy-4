@@ -4,7 +4,7 @@
 #    (See accompanying file LICENSE_1_0.txt or copy at
 #          http://www.boost.org/LICENSE_1_0.txt)
 #
-project(proxy)
+project(proxy_manager)
 cmake_minimum_required(VERSION 2.8)
 
 aux_source_directory(
