@@ -24,7 +24,6 @@ RUN useradd -m -u 1000 -g dev -s /bin/bash dev
 RUN su - dev
 RUN git clone https://github.com/mapamarco/proxy.git /home/dev/proxy && \
     cd /home/dev && \
-    tar zxvf /home/dev/proxy.tar.gz && \
     mkdir build && \
     cd build && \
     cmake ../proxy && \
