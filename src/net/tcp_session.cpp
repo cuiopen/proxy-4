@@ -25,6 +25,9 @@ tcp_session::tcp_session(
     server_(io_service),
     resolver_(io_service),
     to_(config.host_, config.port_),
+    timeout_timer_(io_service),
+    server_timer_(io_service),
+    client_timer_(io_service),
     config_(config)
 {
     info_.status_ = ready;
@@ -59,6 +62,26 @@ void tcp_session::start()
                     boost::asio::placeholders::error,
                     boost::asio::placeholders::iterator)
                 );
+
+    if (config_.timeout_)
+        set_timeout(config_.timeout_);
+}
+
+void tcp_session::set_timeout(
+        uint64_t timeout)
+{
+    LOG_DEBUG() << "session timeout=[" << config_.timeout_ << "]";
+
+    timeout_timer_.expires_from_now(
+                boost::posix_time::microseconds(config_.timeout_));
+
+    timeout_timer_.cancel();
+
+    timeout_timer_.async_wait(
+                boost::bind(
+                    &tcp_session::handle_timeout,
+                    this,
+                    boost::asio::placeholders::error));
 }
 
 const std::string& tcp_session::get_id()
@@ -98,6 +121,21 @@ void tcp_session::handle_resolve(
         LOG_ERROR() << "ec=[" << ec << "] message=[" << ec.message() << "]";
     }
 
+}
+
+void tcp_session::handle_timeout(
+        const boost::system::error_code& ec)
+{
+    if (!ec)
+    {
+        LOG_WARNING() << "timed out";
+
+        stop();
+    }
+    else
+    {
+        LOG_ERROR() << " ec=[" << ec << "] message=[" << ec.message() << "]";
+    }
 }
 
 void tcp_session::handle_connect(
@@ -203,6 +241,9 @@ void tcp_session::stop()
 
     if (info_.status_ != stopped)
     {
+        timeout_timer_.cancel();
+        server_timer_.cancel();
+        client_timer_.cancel();
         server_.close();
         client_.close();
         info_.status_ = stopped;
@@ -234,6 +275,9 @@ void tcp_session::handle_read(
     {
         try
         {
+            if (config_.timeout_)
+                set_timeout(config_.timeout_);
+
             to.async_send(
                         boost::asio::buffer(
                             buffer_read.first.get(),

@@ -36,6 +36,7 @@
             <client-delay>0</client-delay>
             <server-delay>0</server-delay>
             <message-dump>hex</message-dump>
+            <timeout>10000000</timeout>
         </proxy>
         <proxy>
             <name>http</name>

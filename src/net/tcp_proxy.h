@@ -8,6 +8,7 @@
 
 #include <string>
 #include <map>
+#include <cstdint>
 
 #include <boost/asio.hpp>
 #include <boost/thread/thread_pool.hpp>
@@ -41,9 +42,10 @@ public:
         std::string sport_;
         std::string dhost_;
         std::string dport_;
-        size_t client_delay_;
-        size_t server_delay_;
-        size_t buffer_size_;
+        uint64_t client_delay_;
+        uint64_t server_delay_;
+        uint64_t buffer_size_;
+        uint64_t timeout_;
         std::string message_dump_;
     } config;
 

@@ -59,8 +59,9 @@ public:
         std::string host_;
         std::string port_;
         size_t buffer_size_;
-        size_t client_delay_;
-        size_t server_delay_;
+        uint64_t client_delay_;
+        uint64_t server_delay_;
+        uint64_t timeout_;
         message_dump message_dump_;
     } config;
 
@@ -88,6 +89,9 @@ protected:
             const boost::system::error_code& ec,
             boost::asio::ip::tcp::resolver::iterator it);
 
+    void handle_timeout(
+            const boost::system::error_code& ec);
+
     void handle_connect(
             const boost::system::error_code& ec);
 
@@ -104,6 +108,9 @@ protected:
             size_t bytes_tranferred,
             sp_buffer buffer);
 
+    void set_timeout(
+            uint64_t timeout);
+
     void hexdump(
             size_t bytes_tranferred,
             sp_buffer buffer);
@@ -119,6 +126,12 @@ protected:
     boost::asio::ip::tcp::resolver resolver_;
 
     boost::asio::ip::tcp::resolver::query to_;
+
+    boost::asio::deadline_timer timeout_timer_;
+
+    boost::asio::deadline_timer server_timer_;
+
+    boost::asio::deadline_timer client_timer_;
 
     info info_;
 

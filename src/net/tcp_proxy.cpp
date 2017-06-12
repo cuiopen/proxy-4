@@ -49,7 +49,8 @@ void tcp_proxy::start()
                << to_.service_name() << "]";
 
     LOG_INFO() << "message-dump=[" << config_.message_dump_ << "] "
-               << "buffer-size=[" << config_.buffer_size_ << "]";
+               << "buffer-size=[" << config_.buffer_size_ << "] "
+               << "timeout=[" << config_.timeout_ << "]";
 
     LOG_INFO() << "client-delay=[" << config_.client_delay_ << "] "
                << "server-delay=[" << config_.server_delay_ << "]";
@@ -163,6 +164,7 @@ void tcp_proxy::handle_accept(
         session_config.port_ = to_.service_name();
         session_config.client_delay_ = config_.client_delay_;
         session_config.server_delay_ = config_.server_delay_;
+        session_config.timeout_ = config_.timeout_;
 
         if (config_.message_dump_ == "hex")
         {

@@ -8,6 +8,7 @@
 #include <string>
 #include <sstream>
 #include <cstdlib>
+#include <cstdint>
 
 #include <boost/thread.hpp>
 #include <boost/program_options.hpp>
@@ -43,13 +44,23 @@ void add_options(
 
     desc.add_options()
             ("client-delay",
-             po::value<size_t>()->default_value(0),
+             po::value<uint64_t>()->default_value(0),
              "client delay (0 - disabled)");
 
     desc.add_options()
             ("server-delay",
-             po::value<size_t>()->default_value(0),
+             po::value<uint64_t>()->default_value(0),
              "server delay (0 - disabled)");
+
+    desc.add_options()
+            ("timeout",
+             po::value<uint64_t>()->default_value(0),
+             "stop the session whenever a timeout occurs (0 - disabled)");
+
+    desc.add_options()
+            ("name",
+             po::value<std::string>()->default_value("unnamed"),
+             "name of the proxy");
 
     desc.add_options()
             ("buffer-size,b",
@@ -141,14 +152,16 @@ int main(int argc, char* argv[])
                         vm["log-settings"].as<std::string>(),
                         vm["log-level"].as<std::string>());
 
+            config.name_ = vm["name"].as<std::string>();
             config.shost_ = vm["shost"].as<std::string>();
             config.dhost_ = vm["dhost"].as<std::string>();
             config.sport_ = vm["sport"].as<std::string>();
             config.dport_ = vm["dport"].as<std::string>();
             config.buffer_size_ = vm["buffer-size"].as<size_t>();
             config.message_dump_ = vm["message-dump"].as<std::string>();
-            config.client_delay_ = vm["client-delay"].as<size_t>();
-            config.server_delay_ = vm["server-delay"].as<size_t>();
+            config.client_delay_ = vm["client-delay"].as<uint64_t>();
+            config.server_delay_ = vm["server-delay"].as<uint64_t>();
+            config.timeout_ = vm["timeout"].as<uint64_t>();
 
             manager = boost::make_shared<net::proxy_manager>();
             manager->start(config);
