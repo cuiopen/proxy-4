@@ -67,12 +67,12 @@ Be aware that you must have the right permissions in order to install the softwa
 The API reference can be built with doxygen. If you have doxygen in your system just run:
 
 ```sh
-$ make docs
+$ make doc
 ```
 
- At the end of this process, the documentation will be available on the directory:
+ At the end of this process, the documentation will be available on:
 
-${build-dir}/doc
+${build-dir}/doc/html/index.html
 
  ## Docker
 
@@ -81,8 +81,6 @@ If you do not have time, or do not want to worry about the tech stuff, you can g
 ```sh
 docker pull mapamarco/pm_u16.04
 ```
-
-https://hub.docker.com/r/mapamarco/pm_u16.04/
 
 This image was generated with the ${project_dir}/docker/Dockerfile
 
