@@ -12,15 +12,13 @@ MAINTAINER Marco Amorim <mapamarco@gmail.com>
 
 # Update and install packages
 RUN apt -y update
-RUN apt -y install sudo g++ cmake make libboost-all-dev
-RUN apt -y install sudo doxygen docker.io
-RUN apt -y install git
+RUN apt -y install g++ cmake make libboost-all-dev doxygen git
 
 # Create users and groups
 RUN groupadd -g 1000 dev
 RUN useradd -m -u 1000 -g dev -s /bin/bash dev
 
-# Clone and build the Proxy Manager project
+# Clone and build the module
 RUN su - dev
 RUN git clone https://github.com/mapamarco/proxy.git /home/dev/proxy && \
     cd /home/dev && \

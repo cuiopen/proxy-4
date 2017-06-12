@@ -24,6 +24,7 @@ add_executable(
     ${SRC_LIST}
     LICENSE_1_0.txt
     README.md
+    doc/Doxyfile.in
     config/settings.xml
     config/log_settings.txt
     docker/Dockerfile)
@@ -58,3 +59,18 @@ target_link_libraries(
 
 install(
     TARGETS ${PROJECT_NAME} DESTINATION bin)
+
+find_package(Doxygen)
+
+if(DOXYGEN_FOUND)
+
+    configure_file(
+        ${CMAKE_CURRENT_SOURCE_DIR}/doc/Doxyfile.in
+        ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile @ONLY)
+
+    add_custom_target(doc
+        ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+        COMMENT "Generating API documentation with Doxygen" VERBATIM)
+
+endif(DOXYGEN_FOUND)
