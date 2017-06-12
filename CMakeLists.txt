@@ -5,7 +5,10 @@
 #          http://www.boost.org/LICENSE_1_0.txt)
 #
 project(proxy_manager)
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.1)
+
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 aux_source_directory(
     src/modules SRC_LIST)
@@ -22,7 +25,8 @@ add_executable(
     LICENSE_1_0.txt
     README.md
     config/settings.xml
-    config/log_settings.txt)
+    config/log_settings.txt
+    docker/Dockerfile)
 
 #set(Boost_DEBUG                 ON)
 #set(Boost_USE_MULTITHREADED    OFF)
@@ -35,6 +39,7 @@ find_package(
     thread
     random
     system)
+
 find_package(
     Threads REQUIRED)
 
@@ -50,3 +55,6 @@ target_link_libraries(
     ${PROJECT_NAME}
     ${Boost_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT})
+
+install(
+    TARGETS ${PROJECT_NAME} DESTINATION bin)

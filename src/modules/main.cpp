@@ -125,7 +125,8 @@ int main(int argc, char* argv[])
 
         if (vm.count("version"))
         {
-            std::cout << "proxy version " << MODULE_VERSION << std::endl;
+            std::cout << "proxy manager version "
+                      << MODULE_VERSION << std::endl;
             return EXIT_SUCCESS;
         }
 

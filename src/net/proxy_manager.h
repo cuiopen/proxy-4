@@ -11,7 +11,7 @@
 
 #include <boost/property_tree/ptree.hpp>
 #include <boost/asio.hpp>
-#include <boost/thread/thread_pool.hpp>
+#include <boost/thread/thread.hpp>
 
 #include "net/tcp_proxy.h"
 #include "core/log.h"
