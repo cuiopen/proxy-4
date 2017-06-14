@@ -12,7 +12,7 @@ MAINTAINER Marco Amorim <mapamarco@gmail.com>
 
 # Update and install packages
 RUN apt -y update
-RUN apt -y install g++ cmake make libboost-all-dev doxygen git
+RUN apt -y install g++ cmake make libboost-all-dev doxygen git graphviz
 
 # Create users and groups
 RUN groupadd -g 1000 dev

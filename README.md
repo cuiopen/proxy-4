@@ -1,6 +1,6 @@
 ## Proxy Manager
 
-The Proxy Manager is a module that allows you to create TCP/IP proxies. These proxies can be helpful to debug and test network applications. The current implementation use the amazing [Boost.Asio](http://www.boost.org/doc/libs/1_55_0/doc/html/boost_asio.html) library and the asynchronous paradigm. This allows a better usage of the system resources, for example, you can run several proxies using only one thread, each proxy managing multiple TCP sessions simultaneously.
+The proxy manager is a module that allows you to create TCP/IP proxies. These proxies can be helpful to debug and test network applications. The current implementation use the amazing [Boost.Asio](http://www.boost.org/doc/libs/1_55_0/doc/html/boost_asio.html) library and the asynchronous paradigm. This allows a better usage of the system resources, for example, you can run several proxies using only one thread, each proxy managing multiple TCP sessions simultaneously.
 
 ## Motivation
 During the development of many projects involving networking applications, I realized that proxies are great tools that allow us debug and test the rightness of networking related code, at least at the application layer. With a proxy we can observe the network traffic without need a sniffer (which usually must be run in privileged mode). Besides that, we can simulate extreme scenarios in order to evaluate the robustness of these applications, test timeout scenarios, connection drop and another many cool things.
@@ -28,7 +28,16 @@ $ cmake ${project_dir}
 $ make
 ```
 
-If everything goes well, you will end with the module proxy_manager on the root of the build directory. You can check the Proxy Manager version running:
+If everything goes well, you will end up with the module proxy_manager on the root of the build directory. You can check the Proxy Manager version running:
+
+## Installation
+
+It is possible to run the Proxy Manager without install the module. But, if you wish, you can install it running:
+
+```sh
+$ make install
+```
+Be aware that you must have the right permissions in order to install the software.
 
 ```sh
 $ cd ${build_dir}
@@ -53,15 +62,6 @@ Also, you can use the short form:
 $ proxy_manager -s${project_dir}/config/settings.xml
 ```
 
-## Installation
-
-It is possible to run the Proxy Manager without install the module. But, if you wish, you can install it running:
-
-```sh
-$ make install
-```
-Be aware that you must have the right permissions in order to install the software.
-
 ## API Reference
 
 The API reference can be built with doxygen. If you have doxygen in your system just run:
@@ -76,20 +76,41 @@ ${build-dir}/doc/html/index.html
 
  ## Docker
 
-If you do not have time, or do not want to worry about the tech stuff, you can get a container ready to run  at:
+If you do not have time, or do not want to worry about the tech stuff, you can get a container ready to run  [here](https://hub.docker.com/r/mapamarco/pm_u16.04/). You can pull the latest image directly from the docker hub running the command:
 
 ```sh
-docker pull mapamarco/pm_u16.04
+$ docker pull mapamarco/pm_u16.04
 ```
 
-This image was generated with the ${project_dir}/docker/Dockerfile
-
-If you want to build your own image based on this template, run:
+This image was generated with the [${project_dir}/docker/Dockerfile](https://github.com/mapamarco/proxy/blob/master/docker/Dockerfile). If you want to build your own image based on this template, run:
 
 ```sh
 $ cd ${project_dir}/docker
 $ docker build -t pm_u16.04 .
 ```
+
+After pulling a image or build a new one, you can use the proxy interactly:
+```sh
+# Fill the [DOCKER OPTIONS]
+$ docker run -ti [DOCKER OPTIONS] pm_u16.04 proxy_manager [PROXY MANAGER OPTIONS]
+```
+
+Examples:
+```sh
+# Forwarding the traffic of the endpoint '0.0.0.0:2222/ipv4' to the endpoint '192.168.0.17:22/ipv4':
+$ docker run -ti --rm -p2222:2222 pm_u16.04 proxy_manager --shost=0.0.0.0 --sport=2222 --dhost=192.168.0.17 --dport=22 --name=ssh
+
+# Forwarding the traffic of the endpoint '0.0.0.0:2222/ipv4' to the endpoint '192.168.0.17:22/ipv4' with hexa dumping of messages:
+$ docker run -ti --rm -p2222:2222 pm_u16.04 proxy_manager --shost=0.0.0.0 --sport=2222 --dhost=192.168.0.17 --dport=22 --name=ssh --message-dump=hex -ldebug
+
+```
+
+Using the interactly mode you can see the log messages and stop the proxy using CTRL+C directly on your terminal. But, sometimes we don't need to interact with the program, if this is your case, you can execute the proxy as a daemon using the option -d:
+
+```sh
+$ docker run -ti pm_u16.04 proxy_manager [OPTIONS]
+```
+
 
 ## Features
  - Multiples proxies per instance
@@ -106,7 +127,7 @@ $ docker build -t pm_u16.04 .
  - Add plugin support
  - Connection drop
  - Man page
- - Improve the documentation (UML diagrams)
+ - Improve the documentation with UML diagrams
  - Improve the API reference
  - Improve this README
  - Use Doxygen
