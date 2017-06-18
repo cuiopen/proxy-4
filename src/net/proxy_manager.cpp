@@ -29,22 +29,26 @@ proxy_manager::proxy_manager() :
 proxy_manager::~proxy_manager()
 {
     thread_group_.join_all();
+
     LOG_TRACE() << "dtor";
 }
 
 void proxy_manager::create_proxy(
-        tcp_proxy::config& config)
+        const tcp_proxy::config& config)
 {
     tcp_proxy::ptr proxy_ptr =
             boost::make_shared<tcp_proxy>(boost::ref(io_service_), config);
 
     proxies_[config.name_] = proxy_ptr;
+
     proxy_ptr->start();
 }
 
 void proxy_manager::start(
         const std::string& settings_file)
 {
+    boost::lock_guard<boost::mutex> lock(mutex_);
+
     LOG_INFO() << "starting";
 
     LOG_INFO() << "reading settings from file=[" << settings_file << "]";
@@ -64,9 +68,9 @@ void proxy_manager::start(
             config.dhost_ = v.second.get("dhost", "localhost");
             config.sport_ = v.second.get("sport", "http-alt");
             config.dport_ = v.second.get("dport", "http");
-            config.client_delay_ = v.second.get("client-delay", 0);
-            config.server_delay_ = v.second.get("server-delay", 0);
-            config.buffer_size_ = v.second.get("buffer-size", 8192);
+            config.client_delay_ = v.second.get("client-delay", 0ul);
+            config.server_delay_ = v.second.get("server-delay", 0ul);
+            config.buffer_size_ = v.second.get("buffer-size", 8192ul);
             config.message_dump_ =  v.second.get("message-dump", "none");
 
             create_proxy(config);
@@ -85,12 +89,15 @@ void proxy_manager::start(
     }
 
     LOG_INFO() << "started";
+
     io_service_.run();
 }
 
 void proxy_manager::start(
-        tcp_proxy::config proxy_config)
+        const tcp_proxy::config& proxy_config)
 {
+    boost::lock_guard<boost::mutex> lock(mutex_);
+
     LOG_INFO() << "starting";
 
     create_proxy(proxy_config);
@@ -103,6 +110,7 @@ void proxy_manager::start(
 void proxy_manager::stop()
 {
     LOG_INFO() << "stopping now";
+
     io_service_.stop();
 
     BOOST_FOREACH(proxy_map::value_type& v, proxies_)
@@ -111,6 +119,8 @@ void proxy_manager::stop()
     }
 
     proxies_.clear();
+
+    LOG_INFO() << "stopped";
 }
 
 void proxy_manager::handle_signal(
