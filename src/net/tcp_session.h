@@ -17,32 +17,53 @@
 
 #include "core/log.h"
 
+///
+/// @brief This namespace is used by all classes related to networking.
+///
 namespace net {
 
+///
+/// @brief This class is responsible for management one single TCP/IP session.
+///
 class tcp_session :
         public boost::enable_shared_from_this<tcp_session>
 {
 
 public:
 
-    typedef enum message_dump_ {
+    ///
+    /// @brief Message dump types.
+    ///
+    typedef enum message_dump_
+    {
         none,
         hex,
         ascii
     } message_dump;
 
-    typedef enum status_ {
+    typedef enum status_
+    {
         ready,
         running,
         stopped
     } status;
 
+    ///
+    /// @brief Defines a shared_ptr for itself.
+    ///
     typedef boost::shared_ptr<tcp_session> ptr;
 
     typedef std::pair<boost::shared_ptr<uint8_t[]>, size_t> sp_buffer;
 
+    ///
+    /// @brief Defines the type of time_point used by the session.
+    ///
     typedef boost::chrono::system_clock::time_point time_point;
 
+    ///
+    /// @brief This structure defines counters and time points for collecting
+    /// statistical information.
+    ///
     typedef struct info_
     {
         status status_;
@@ -52,6 +73,10 @@ public:
         uint64_t total_rx_;
     } info;
 
+    ///
+    /// @brief This structures defines all configuration parameters required by
+    /// the session.
+    ///
     typedef struct config_
     {
         std::string id_;
@@ -115,8 +140,16 @@ protected:
             size_t bytes_tranferred,
             sp_buffer buffer);
 
+    ///
+    /// @brief Holds the logger responsible for logging events from objects of
+    /// this class.
+    ///
     core::logger_type logger_;
 
+    ///
+    /// @brief Holds the io_service reference used to process all asynchronous
+    /// operations.
+    ///
     boost::asio::io_service& io_service_;
 
     boost::asio::ip::tcp::socket client_;
@@ -133,10 +166,19 @@ protected:
 
     boost::asio::deadline_timer client_timer_;
 
+    ///
+    /// @brief Holds the configuration.
+    ///
     info info_;
 
+    ///
+    /// @brief Holds statistical information.
+    ///
     config config_;
 
+    ///
+    /// @brief Mutex used to synchronize access to this class.
+    ///
     boost::mutex mutex_;
 
 };

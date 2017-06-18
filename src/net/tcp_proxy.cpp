@@ -100,10 +100,10 @@ void tcp_proxy::handle_session_stopped(
 }
 
 void tcp_proxy::handle_resolve(
-        const boost::system::error_code& ec,
+        const boost::system::error_code& error_code,
         boost::asio::ip::tcp::resolver::iterator it)
 {
-    if (!ec)
+    if (!error_code)
     {
         ip::tcp::resolver::iterator end;
 
@@ -130,15 +130,16 @@ void tcp_proxy::handle_resolve(
     }
     else
     {
-        LOG_ERROR() << "ec=[" << ec << "] message=[" << ec.message() << "]";
+        LOG_ERROR() << "ec=[" << error_code << "] message=["
+                    << error_code.message() << "]";
     }
 }
 
 void tcp_proxy::handle_accept(
-        const boost::system::error_code& ec,
+        const boost::system::error_code& error_code,
         tcp_session::ptr session_ptr)
 {
-    if (!ec)
+    if (!error_code)
     {
         std::ostringstream session_id;
 
@@ -201,6 +202,6 @@ void tcp_proxy::handle_accept(
     }
     else
     {
-        LOG_ERROR() << "ec=[" << ec << "] message=[" << ec.message() << "]";
+        LOG_ERROR() << "ec=[" << error_code << "] message=[" << error_code.message() << "]";
     }
 }
