@@ -1,6 +1,6 @@
 ## Proxy Manager
 
-The proxy manager is a module that allows you to create TCP/IP proxies. These proxies can be helpful to debug and test network applications. The current implementation use the amazing [Boost.Asio](http://www.boost.org/doc/libs/1_55_0/doc/html/boost_asio.html) library and the asynchronous paradigm. This allows a better usage of the system resources, for example, you can run several proxies using only one thread, each proxy managing multiple TCP sessions simultaneously.
+The proxy manager is a module that allows you to create TCP/IP proxies. These proxies can be helpful to debug and test network applications. The current implementation use the incredible [Boost.Asio](http://www.boost.org/doc/libs/1_55_0/doc/html/boost_asio.html) library and makes extensive use of asynchronous programming. This allows a better use of the system resources, which allows, for example, run several proxies with only one thread, each proxy managing multiple TCP sessions simultaneously.
 
 ## Motivation
 During the development of many projects involving networking applications, I realized that proxies are great tools that allow us debug and test the rightness of networking related code, at least at the application layer. With a proxy we can observe the network traffic without need a sniffer (which usually must be run in privileged mode). Besides that, we can simulate extreme scenarios in order to evaluate the robustness of these applications, test timeout scenarios, connection drop and another many cool things.
@@ -19,7 +19,7 @@ Optional:
  - Docker (Needed if you want use the dockerized version)
 
 ## Build
-I strongly recommend the use of a shadow build in order to keep the source directory clean:
+I strongly recommend the use of a shadow build technique in order to keep the source directory clean:
 
 ```sh
 $ mkdir build
@@ -28,11 +28,11 @@ $ cmake ${project_dir}
 $ make
 ```
 
-If everything goes well, you will end up with the module proxy_manager on the root of the build directory. You can check the Proxy Manager version running:
+If everything goes well, you will end up with the module __proxy_manager__ on the root of the build directory. You can check the proxy manager version running:
 
 ## Installation
 
-It is possible to run the Proxy Manager without install the module. But, if you wish, you can install it running:
+It is possible to run the proxy manager without install it. But, if you wish, you can install it running:
 
 ```sh
 $ make install
@@ -48,7 +48,7 @@ version 1.0.0
 ## Usage
 There are two operating modes:
 
-The first mode uses a settings file which is used to initialize the Proxy Manager. This settings specifies the number of threads used by the thread pool, the logging setup, the list of proxies and so on.
+The first mode uses a settings file which is used to initialize the proxy manager. This settings specifies the number of threads used by the thread pool, the logging setup, the list of proxies and so on.
 You can get an example of this settings on the ${project_dir}/config/settings.xml.
 Example:
 
@@ -61,6 +61,15 @@ Also, you can use the short form:
 ```sh
 $ proxy_manager -s${project_dir}/config/settings.xml
 ```
+
+The second mode uses only the program arguments to configure and run only one proxy.
+Example:
+
+```sh
+$ proxy_manager --name=http --sport=http-alt --shost=0.0.0.0 --dport=http --dhost=google.com --message-dump=ascii --log-level=debug
+```
+
+The example above will route all traffic from the alternative http port (8080) to the http port (80) on google.com. All messages will be dumped to the standard output in the ASCII format.
 
 ## API Reference
 
@@ -125,13 +134,11 @@ $ docker run -ti pm_u16.04 proxy_manager [OPTIONS]
 ## TODO
  - UDP sockets
  - Add plugin support
- - Connection drop
+ - Improve the connection drop (timeout)
  - Man page
  - Improve the documentation with UML diagrams
  - Improve the API reference
  - Improve this README
- - Use Doxygen
- - Use Docker
  - Add more examples
  - Bandwidth management
 

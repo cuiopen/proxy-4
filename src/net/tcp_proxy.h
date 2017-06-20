@@ -11,6 +11,7 @@
 #include <cstdint>
 
 #include <boost/asio.hpp>
+#include <boost/thread/mutex.hpp>
 #include <boost/smart_ptr.hpp>
 #include <boost/enable_shared_from_this.hpp>
 #include <boost/random/random_device.hpp>
@@ -266,6 +267,11 @@ protected:
     /// @brief Holds statistical information.
     ///
     info info_;
+
+    ///
+    /// @brief Mutex used to synchronize access to this class.
+    ///
+    boost::mutex mutex_;
 
 };
 

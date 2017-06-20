@@ -95,10 +95,10 @@ const tcp_session::info& tcp_session::get_info()
 }
 
 void tcp_session::handle_resolve(
-        const boost::system::error_code& ec,
+        const boost::system::error_code& error_code,
         boost::asio::ip::tcp::resolver::iterator it)
 {
-    if (!ec)
+    if (!error_code)
     {
         boost::asio::ip::tcp::resolver::iterator end;
         if (it != end)
@@ -118,15 +118,16 @@ void tcp_session::handle_resolve(
     }
     else
     {
-        LOG_ERROR() << "ec=[" << ec << "] message=[" << ec.message() << "]";
+        LOG_ERROR() << "ec=[" << error_code << "] message=["
+                    << error_code.message() << "]";
     }
 
 }
 
 void tcp_session::handle_timeout(
-        const boost::system::error_code& ec)
+        const boost::system::error_code& error_code)
 {
-    if (!ec)
+    if (!error_code)
     {
         LOG_WARNING() << "timed out";
 
@@ -134,14 +135,15 @@ void tcp_session::handle_timeout(
     }
     else
     {
-        LOG_ERROR() << " ec=[" << ec << "] message=[" << ec.message() << "]";
+        LOG_ERROR() << " ec=[" << error_code << "] message=["
+                    << error_code.message() << "]";
     }
 }
 
 void tcp_session::handle_connect(
-        const boost::system::error_code& ec)
+        const boost::system::error_code& error_code)
 {
-    if (!ec)
+    if (!error_code)
     {
         LOG_DEBUG() << "connected";
 
@@ -188,12 +190,13 @@ void tcp_session::handle_connect(
     }
     else
     {
-        LOG_ERROR() << " ec=[" << ec << "] message=[" << ec.message() << "]";
+        LOG_ERROR() << " ec=[" << error_code << "] message=["
+                    << error_code.message() << "]";
     }
 }
 
 void tcp_session::hexdump(
-        size_t bytes_tranferred,
+        size_t size,
         sp_buffer buffer)
 {
     size_t i = 0;
@@ -202,7 +205,7 @@ void tcp_session::hexdump(
 
     hex_out << std::setfill('0') << std::setw(8) << address << "    ";
 
-    while (i < bytes_tranferred)
+    while (i < size)
     {
         hex_out << std::hex << std::setw(2)
                 << static_cast<uint16_t>(buffer.first[i]) << ' ';
@@ -264,14 +267,14 @@ void tcp_session::stop()
 }
 
 void tcp_session::handle_read(
-        const boost::system::error_code& ec,
-        size_t bytes_tranferred,
+        const boost::system::error_code& error_code,
+        size_t bytes_transferred,
         sp_buffer buffer_read,
         boost::asio::ip::tcp::socket& from,
         boost::asio::ip::tcp::socket& to,
         bool server_flag)
 {
-    if (!ec && bytes_tranferred)
+    if (!error_code && bytes_transferred)
     {
         try
         {
@@ -281,7 +284,7 @@ void tcp_session::handle_read(
             to.async_send(
                         boost::asio::buffer(
                             buffer_read.first.get(),
-                            bytes_tranferred),
+                            bytes_transferred),
                         boost::bind(
                             &tcp_session::handle_send,
                             shared_from_this(),
@@ -293,7 +296,7 @@ void tcp_session::handle_read(
             {
                 boost::lock_guard<boost::mutex> lock(mutex_);
 
-                info_.total_rx_ += bytes_tranferred;
+                info_.total_rx_ += bytes_transferred;
 
 
                 LOG_DEBUG() << "server=[" << from.local_endpoint().address()
@@ -304,7 +307,7 @@ void tcp_session::handle_read(
                             << ":" << to.remote_endpoint().port() << "/"
                             << (to.local_endpoint().address().is_v4() ?
                                     "ipv4" : "ipv6") << "] "
-                            << "bytes=[" << bytes_tranferred << "]";
+                            << "bytes=[" << bytes_transferred << "]";
 
                 if (config_.server_delay_)
                     boost::this_thread::sleep_for(
@@ -315,7 +318,7 @@ void tcp_session::handle_read(
             {
                 boost::lock_guard<boost::mutex> lock(mutex_);
 
-                info_.total_tx_ += bytes_tranferred;
+                info_.total_tx_ += bytes_transferred;
 
                 LOG_DEBUG() << "client=[" << from.local_endpoint().address()
                             << ":" << from.local_endpoint().port() << "/"
@@ -325,7 +328,7 @@ void tcp_session::handle_read(
                             << ":" << to.remote_endpoint().port() << "/"
                             << (to.local_endpoint().address().is_v4() ?
                                     "ipv4" : "ipv6") << "] "
-                            << "bytes=[" << bytes_tranferred << "]";
+                            << "bytes=[" << bytes_transferred << "]";
 
 
                 if (config_.client_delay_)
@@ -336,7 +339,7 @@ void tcp_session::handle_read(
 
             if (config_.message_dump_ == hex)
             {
-                hexdump(bytes_tranferred, buffer_read);
+                hexdump(bytes_transferred, buffer_read);
             }
             else if (config_.message_dump_ == ascii)
             {
@@ -367,9 +370,10 @@ void tcp_session::handle_read(
     }
     else
     {
-        if (!ec)
+        if (!error_code)
         {
-            LOG_ERROR() << "ec=[" << ec << "] message=[" << ec.message() << "]";
+            LOG_ERROR() << "ec=[" << error_code << "] message=["
+                        << error_code.message() << "]";
         }
         else
         {
@@ -383,14 +387,15 @@ void tcp_session::handle_read(
 }
 
 void tcp_session::handle_send(
-        const boost::system::error_code& ec,
-        size_t bytes_tranferred,
+        const boost::system::error_code& error_code,
+        size_t bytes_transferred,
         sp_buffer)
 {
-    LOG_TRACE() << "bytes sent: " << bytes_tranferred;
+    LOG_TRACE() << "bytes sent: " << bytes_transferred;
 
-    if (ec)
+    if (error_code)
     {
-        LOG_ERROR() << "ec=[" << ec << "] message=[" << ec.message() << "]";
+        LOG_ERROR() << "ec=[" << error_code << "] message=["
+                    << error_code.message() << "]";
     }
 }

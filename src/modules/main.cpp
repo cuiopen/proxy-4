@@ -19,6 +19,11 @@
 #include "net/proxy_manager.h"
 #include "core/log.h"
 
+///
+/// @brief This function setups all program options.
+///
+/// @param desc The option description that will be written with all options.
+///
 void add_options(
         boost::program_options::options_description& desc)
 {
