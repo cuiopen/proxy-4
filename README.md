@@ -30,6 +30,12 @@ $ make
 
 If everything goes well, you will end up with the module __proxy_manager__ on the root of the build directory. You can check the proxy manager version running:
 
+```sh
+$ cd ${build_dir}
+$ ./proxy_manager --version
+version 1.0.0
+```
+
 ## Installation
 
 It is possible to run the proxy manager without install it. But, if you wish, you can install it running:
@@ -38,12 +44,6 @@ It is possible to run the proxy manager without install it. But, if you wish, yo
 $ make install
 ```
 Be aware that you must have the right permissions in order to install the software.
-
-```sh
-$ cd ${build_dir}
-$ ./proxy_manager --version
-version 1.0.0
-```
 
 ## Usage
 There are two operating modes:
