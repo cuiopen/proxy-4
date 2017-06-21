@@ -6,11 +6,12 @@
 //
 #include <iomanip>
 #include <sstream>
+#include <cctype>
 
 #include <boost/make_shared.hpp>
 #include <boost/bind.hpp>
-#include <boost/thread/lock_guard.hpp>
-#include <boost/thread/thread.hpp>
+#include <boost/thread.hpp>
+#include <boost/algorithm/hex.hpp>
 
 #include "net/tcp_session.h"
 using namespace net;
@@ -196,28 +197,28 @@ void tcp_session::handle_connect(
 }
 
 void tcp_session::hexdump(
-        size_t size,
-        sp_buffer buffer)
+        const uint8_t* buffer,
+        size_t size)
 {
     size_t i = 0;
     uint32_t address = 0;
-    std::ostringstream hex_out, ascii_out;
+    std::ostringstream out, hex_out, ascii_out;
 
-    hex_out << std::setfill('0') << std::setw(8) << address << "    ";
+    hex_out << '\n' << std::setfill('0') << std::setw(8) << address << "    ";
 
     while (i < size)
     {
         hex_out << std::hex << std::setw(2)
-                << static_cast<uint16_t>(buffer.first[i]) << ' ';
+                << static_cast<uint16_t>(buffer[i]) << ' ';
 
         ascii_out << static_cast<char>(
-                         std::isgraph(buffer.first[i]) ? buffer.first[i] : '.');
+                         std::isgraph(buffer[i]) ? buffer[i] : '.');
 
         ++i;
 
         if (!(i % 16))
         {
-            LOG_DEBUG() << hex_out.str() << "   " << ascii_out.str();
+            out << hex_out.str() << "   " << ascii_out.str() << '\n';
 
             ascii_out.str("");
             hex_out.str("");
@@ -234,8 +235,10 @@ void tcp_session::hexdump(
             hex_out << "   ";
         }
 
-        LOG_DEBUG() << hex_out.str() << "   " << ascii_out.str();
+        out << hex_out.str() << "   " << ascii_out.str();
     }
+
+    LOG_DEBUG() << out.str();
 }
 
 void tcp_session::stop()
@@ -339,7 +342,7 @@ void tcp_session::handle_read(
 
             if (config_.message_dump_ == hex)
             {
-                hexdump(bytes_transferred, buffer_read);
+                hexdump(buffer_read.first.get(), bytes_transferred);
             }
             else if (config_.message_dump_ == ascii)
             {

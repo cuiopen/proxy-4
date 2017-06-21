@@ -286,12 +286,12 @@ protected:
     ///
     /// @brief Prints the hexadecimal representation of a buffer.
     ///
-    /// @param size Buffer size.
     /// @param buffer Buffer that will be printed.
+    /// @param size Buffer size.
     ///
     void hexdump(
-            size_t size,
-            sp_buffer buffer);
+            const uint8_t* buffer,
+            size_t size);
 
     ///
     /// @brief Holds the logger responsible for logging events from objects of

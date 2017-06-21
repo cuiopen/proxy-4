@@ -10,6 +10,7 @@
 #include <stdexcept>
 
 #include <boost/asio.hpp>
+#include <boost/thread.hpp>
 #include <boost/chrono.hpp>
 #include <boost/make_shared.hpp>
 #include <boost/foreach.hpp>
@@ -67,6 +68,8 @@ void tcp_proxy::start()
 
 void tcp_proxy::stop()
 {
+    boost::lock_guard<boost::mutex> lock(mutex_);
+
     BOOST_FOREACH(session_map::value_type& v, sessions_)
     {
         v.second->stop();
@@ -90,6 +93,8 @@ void tcp_proxy::stop()
 void tcp_proxy::handle_session_stopped(
         tcp_session::ptr session_ptr)
 {
+    boost::lock_guard<boost::mutex> lock(mutex_);
+
     LOG_INFO() << "removing session=[" << session_ptr->get_id() << "]";
 
     info_.total_rx_ += session_ptr->get_info().total_rx_;
@@ -139,6 +144,8 @@ void tcp_proxy::handle_accept(
         const boost::system::error_code& error_code,
         tcp_session::ptr session_ptr)
 {
+    boost::lock_guard<boost::mutex> lock(mutex_);
+
     if (!error_code)
     {
         std::ostringstream session_id;
