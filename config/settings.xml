@@ -15,7 +15,7 @@
     <proxies>
         <proxy>
             <name>ssh_ipv6</name>
-            <active>1</active>
+            <active>0</active>
             <shost>::0</shost>
             <sport>3333</sport>
             <dhost>::1</dhost>
@@ -27,7 +27,7 @@
         </proxy>
         <proxy>
             <name>ssh_ipv4</name>
-            <active>0</active>
+            <active>1</active>
             <shost>0.0.0.0</shost>
             <sport>3333</sport>
             <dhost>localhost</dhost>
@@ -36,7 +36,7 @@
             <client-delay>0</client-delay>
             <server-delay>0</server-delay>
             <message-dump>hex</message-dump>
-            <timeout>10000000</timeout>
+            <timeout>1000000</timeout>
         </proxy>
         <proxy>
             <name>http</name>

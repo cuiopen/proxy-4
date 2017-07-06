@@ -72,6 +72,7 @@ void proxy_manager::start(
             config.server_delay_ = v.second.get("server-delay", 0ul);
             config.buffer_size_ = v.second.get("buffer-size", 8192ul);
             config.message_dump_ =  v.second.get("message-dump", "none");
+            config.timeout_ =  v.second.get("timeout", 0ul);
 
             create_proxy(config);
         }

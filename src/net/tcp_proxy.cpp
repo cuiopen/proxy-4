@@ -68,14 +68,10 @@ void tcp_proxy::start()
 
 void tcp_proxy::stop()
 {
-    boost::lock_guard<boost::mutex> lock(mutex_);
-
     BOOST_FOREACH(session_map::value_type& v, sessions_)
     {
         v.second->stop();
     }
-
-    sessions_.clear();
 
     info_.stop_time_ = boost::chrono::system_clock::now();
 
